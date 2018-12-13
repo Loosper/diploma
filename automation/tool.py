@@ -5,60 +5,106 @@ import modules
 import sys
 import os
 
-
-def finish(args):
-    sys.exit()
-
-
-def asm(args):
-    if len(args) < 1:
-        print('Usage: asm [file]')
-        return
-    assemble(args[0])
+def rget(*args):
+    *head, tail = args
+    return getattr(head[0] if len(head) == 1 else rget(*head), tail)
 
 
-def disasm(args):
-    if len(args) < 2:
-        print('Usage: disasm [shellcode] [arch]')
-        return
-    disassemble(args[0] , args[1])
+class InvalidArgument(Exception):
+    def __init__(self, msg):
+        self.msg = msg
 
 
-def gen(args):
-    archs = [arch[5:] for arch in dir(modules) if arch.startswith('arch_')]
+class Mode:
+    def __init__(self, cmds, tooltip='> '):
+        self.cmds = cmds
+        self.tooltip = tooltip
 
-    if len(args) < 1 or args[0] not in archs:
-        print('Supported architectures:')
-        print(archs)
-        return
+    def __call__(self):
+        for args in self.get_input():
+            try:
+                self.cmds.get(args[0])(args[1:])
+            except InvalidArgument as e:
+                print(e.msg)
+            except KeyError:
+                print('Unsupported command :(')
 
-    arch = getattr(modules, 'arch_' + args[0])
-    funcs = [mod[4:] for mod in dir(arch) if mod.startswith('mod_')]
+    def get_input(self):
+        while True:
+            try:
+                cmd = input(self.tooltip)
+            except EOFError:
+                print()
+                break
 
-    print(funcs)
-
-    print(getattr(getattr(arch, 'mod_' + funcs[0]), 'Module'))
-
-
-
-all_cmds = {
-    'exit': finish,
-    'asm': asm,
-    'disasm': disasm,
-    'gen': gen
-}
+            yield cmd.split()
 
 
-while True:
-    try:
-        cmd = input('> ')
-    except EOFError:
-        break
+class BaseMode(Mode):
+    def __init__(self):
+        cmds = {
+            'exit': self.finish,
+            'asm': self.asm,
+            'disasm': self.disasm,
+            'gen': lambda args: GenMode(args)()
+        }
 
-    args = cmd.split()
+        super().__init__(cmds)
 
-    executor = all_cmds.get(args[0])
-    if executor:
-        executor(args[1:])
-    else:
-        print('Unsupported command :(')
+    def finish(self, args):
+        sys.exit()
+
+    def asm(self, args):
+        if len(args) < 1:
+            raise InvalidArgument('Usage: asm [file]')
+
+        assemble(args[0])
+
+    def disasm(self, args):
+        if len(args) < 2:
+            raise InvalidArgument('Usage: disasm [shellcode] [arch]')
+
+        disassemble(args[0] , args[1])
+
+
+class GenMode(Mode):
+    def __init__(self, args):
+        self.archs = [
+            arch[5:] for arch in dir(modules)
+            if arch.startswith('arch_')
+        ]
+        cmds = {
+            # 'exit': self.finish,
+            'add': self.add_mod,
+            'build': self.build
+        }
+
+        if len(args) < 1 or args[0] not in self.archs:
+            raise InvalidArgument(
+                'Supported architectures: {}'.format(self.archs)
+            )
+
+
+        self.arch = rget(modules, 'arch_' + args[0])
+        self.gen = rget(self.arch, 'Generator', 'Generator')()
+
+        super().__init__(cmds, tooltip='>> ')
+
+    def add_mod(self, args):
+        if len(args) < 1:
+            raise InvalidArgument('add something')
+
+        try:
+            mod = rget(self.arch, 'mod_' + args[0], 'Module')()
+            self.gen.append_module(mod)
+        except AttributeError:
+            raise InvalidArgument('Missing')
+
+    def build(self, args):
+        print(self.gen.build())
+
+
+try:
+    BaseMode()()
+except KeyboardInterrupt:
+    print('bye')

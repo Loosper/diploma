@@ -2,7 +2,7 @@ from elftools.elf import elffile
 import subprocess
 
 def assemble(path):
-    output = 'output.o'
+    output = '/tmp/output.o'
     assembler = ['as', path, '-o', output]
     subprocess.run(assembler)
 

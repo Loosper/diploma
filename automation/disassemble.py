@@ -2,8 +2,8 @@ import subprocess
 import re
 
 
-tmp_file = 'elffile'
-obj_file = 'out'
+tmp_file = '/tmp/elffile'
+obj_file = '/tmp/out'
 
 objfile_map = {
     'amd64': ['i386:x86-64', 'elf64-x86-64'],
