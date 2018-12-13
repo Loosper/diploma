@@ -1,9 +1,13 @@
 all: shellcode
 
 shellcode:
-	gcc -c shellcode.s
-	ld shellcode.o
+	as -g -o shellcode.o shellcode.s
+	# code is not in stack, so make .text writable
+	ld -N -z execstack shellcode.o
 	./a.out
-	
+
 test:
-	gcc -fno-stack-protector -z execstack test_shellcode.c
+	gcc -g -z execstack -fno-stack-protector test_shellcode.c
+
+clean:
+	rm -f ./a.out *.o

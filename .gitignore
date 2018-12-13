@@ -1,2 +1,6 @@
 a.out
 *.o
+.vscode/
+__pycache__/
+.env/
+*.swp
