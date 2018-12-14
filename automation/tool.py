@@ -5,6 +5,7 @@ import modules
 import sys
 import os
 
+
 def rget(*args):
     *head, tail = args
     return getattr(head[0] if len(head) == 1 else rget(*head), tail)
@@ -17,17 +18,26 @@ class InvalidArgument(Exception):
 
 class Mode:
     def __init__(self, cmds, tooltip='> '):
-        self.cmds = cmds
+        # TODO: consider using argparse
+        self.cmds = {
+            'exit': self.exit,
+            'help': self.help,
+        }
+        self.cmds.update(cmds)
         self.tooltip = tooltip
 
     def __call__(self):
         for args in self.get_input():
             try:
-                self.cmds.get(args[0])(args[1:])
+                # this can return things, to be saved in 'global_state'
+                # which could itself be modifiable with other commands
+                self.cmds[args[0]](args[1:])
             except InvalidArgument as e:
                 print(e.msg)
             except KeyError:
                 print('Unsupported command :(')
+            except StopIteration:
+                break
 
     def get_input(self):
         while True:
@@ -39,20 +49,24 @@ class Mode:
 
             yield cmd.split()
 
+    def exit(self, args):
+        raise StopIteration
+
+    def help(self, args):
+        keys = ', '.join(self.cmds.keys())
+        print(f'Supported commands: {keys}')
+
 
 class BaseMode(Mode):
     def __init__(self):
         cmds = {
-            'exit': self.finish,
             'asm': self.asm,
             'disasm': self.disasm,
-            'gen': lambda args: GenMode(args)()
+            'gen': lambda args: GenMode(args)(),
+            'test': lambda args: TestMode(args)(),
         }
 
         super().__init__(cmds)
-
-    def finish(self, args):
-        sys.exit()
 
     def asm(self, args):
         if len(args) < 1:
@@ -64,6 +78,7 @@ class BaseMode(Mode):
         if len(args) < 2:
             raise InvalidArgument('Usage: disasm [shellcode] [arch]')
 
+        # TODO: validation
         disassemble(args[0] , args[1])
 
 
@@ -74,19 +89,24 @@ class GenMode(Mode):
             if arch.startswith('arch_')
         ]
         cmds = {
-            # 'exit': self.finish,
             'add': self.add_mod,
+            'show': self.show_mods,
             'build': self.build
+            # 'test': self.test???
+            # or save and have testing be global?
         }
 
         if len(args) < 1 or args[0] not in self.archs:
             raise InvalidArgument(
                 'Supported architectures: {}'.format(self.archs)
             )
-
-
+        # checked above
         self.arch = rget(modules, 'arch_' + args[0])
-        self.gen = rget(self.arch, 'Generator', 'Generator')()
+
+        try:
+            self.gen = rget(self.arch, 'Generator', 'Generator')()
+        except AttributeError:
+            raise InvalidArgument('Arch does not support generating')
 
         super().__init__(cmds, tooltip='>> ')
 
@@ -100,11 +120,16 @@ class GenMode(Mode):
         except AttributeError:
             raise InvalidArgument('Missing')
 
+    def show_mods(self, args):
+        mods = ', '.join(map(repr, self.gen.modules))
+        print(f'Modules {mods} for arch {self.gen.arch}')
+
     def build(self, args):
         print(self.gen.build())
 
 
-try:
-    BaseMode()()
-except KeyboardInterrupt:
-    print('bye')
+if __name__ == '__main__':
+    try:
+        BaseMode()()
+    except KeyboardInterrupt:
+        print('bye')

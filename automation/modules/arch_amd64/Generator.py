@@ -1,6 +1,9 @@
 from ..BaseGenerator import BaseGenerator
 
 class Generator(BaseGenerator):
+    def __init__(self):
+        super().__init__(arch='amd64')
+
     def build(self):
         header = '''
         .global _start

@@ -1,5 +1,6 @@
 class BaseGenerator:
-    def __init__(self):
+    def __init__(self, arch):
+        self.arch = arch
         self.modules = []
 
     def append_module(self, module):

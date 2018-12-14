@@ -7,3 +7,6 @@ class BaseModule:
         self.data = data
         self.params = params
 
+    def __repr__(self):
+        # should i show params?
+        return f'<Module {self.name}>'
