@@ -1,4 +1,4 @@
-from .errors import InvalidArgument
+from ..lib import InvalidArgument
 
 class BaseTest:
     def __init__(self, code, archs, name, params={}):
