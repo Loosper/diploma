@@ -5,17 +5,23 @@ from modules.errors import InvalidArgument
 import modules
 
 from elftools.elf import elffile
+from elftools.common.exceptions import ELFError
 import subprocess
 import sys
 import os
 import re
 
+# TODO: cli option to run a 'script'
 
 def rget(*args):
     *head, tail = args
     return getattr(head[0] if len(head) == 1 else rget(*head), tail)
 
 
+# TODO: identation in modules is fucked
+# TODO: args validation with a decorator
+# TODO: reasonable error messages
+# TODO: usage help - argparse?
 # TODO: consistent method and command naming
 class Mode:
     # shared, because mutable. Do not assign
@@ -28,6 +34,10 @@ class Mode:
             'exit': self.exit,
             'help': self.help,
         }
+        self.archs = [
+            arch[5:] for arch in dir(modules)
+            if arch.startswith('arch_')
+        ]
         self.cmds.update(cmds)
         self.tooltip = tooltip
 
@@ -90,16 +100,10 @@ class BaseMode(Mode):
 
 class GenMode(Mode):
     def __init__(self, args):
-        self.archs = [
-            arch[5:] for arch in dir(modules)
-            if arch.startswith('arch_')
-        ]
         cmds = {
             'add': self.add_mod,
             'show': self.show_mods,
-            'build': self.build
-            # 'test': self.test???
-            # or save and have testing be global?
+            'build': self.build,
         }
 
         if len(args) < 1 or args[0] not in self.archs:
@@ -193,37 +197,47 @@ class TestMode(Mode):
         print(program)
 
 
+# TODO: these are mostly arch dependent.
 class BuildMode(Mode):
     tmp_path = '/tmp/tool/'
 
     def __init__(self, args):
+        if len(args) < 1:
+            raise InvalidArgument('Specify an arch')
+        if args[0] not in self.archs:
+            raise InvalidArgument('Unsuppoted arch')
+
+        self.arch = args[0]
         os.makedirs(self.tmp_path, exist_ok=True)
         self.tester = None
         cmds = {
             'asm': self.asm,
             'disasm': self.disasm,
+            'extract': self.extract,
+            'compile': self.compile,
+            'link': self.link,
+            'gdb': self.gdb,
+            'run': self.run,
         }
         super().__init__(cmds, tooltip='>< ')
 
     def asm(self, args):
         if len(args) < 1:
-            raise InvalidArgument('Usage: asm [file]')
+            raise InvalidArgument('Usage: asm [input] [output]')
 
-        output = '/tmp/output.o'
+        output = args[1] if len(args) >= 2 else self.tmp_path + 'output.o'
         assembler = ['as', args[0], '-o', output]
         subprocess.run(assembler)
+        print(f'saved to "{output}"')
 
-        with open(output, 'br') as file:
-            dec = elffile.ELFFile(file)
-            shellcode = dec.get_section_by_name('.text').data()
-            print('"{}"'.format(
-                ''.join('\\x{:02x}'.format(b) for b in shellcode)
-            ))
 
     def disasm(self, args):
-        # TODO: validation
+        # TODO: validate arch exists
+        # TODO: accept path as disasm target
+        # TODO: guess arch
         if len(args) < 2:
             raise InvalidArgument('Usage: disasm [shellcode] [arch]')
+
 
         tmp_file = self.tmp_path + 'elffile'
         obj_file = self.tmp_path + 'out'
@@ -233,7 +247,6 @@ class BuildMode(Mode):
             'x86': ['i386', 'elf32-i386']
         }
 
-        # def disassemble(shellcode, arch):
         arch, fformat = objfile_map[args[1]]
         # parse from \x12 style encoding and store in bytearray to preserve endinanness
         parsed = bytearray(
@@ -260,24 +273,63 @@ class BuildMode(Mode):
         ins = [a.strip() for a in ins]
         print('\n'.join(ins))
 
-    # def extract(self):
-    #     pass
+    def extract(self, args):
+        if len(args) < 1:
+            raise InvalidArgument('Please specify a file')
 
-    # def link(self):
-    #     pass
+        try:
+            with open(args[0], 'br') as file:
+                reader = elffile.ELFFile(file)
+                shellcode = reader.get_section_by_name('.text').data()
+                print('"{}"'.format(
+                    ''.join('\\x{:02x}'.format(b) for b in shellcode)
+                ))
+        except (FileNotFoundError, IsADirectoryError):
+            raise InvalidArgument('Invalid path')
+        except ELFError:
+            raise InvalidArgument('Input not elf file')
 
-    # def run(self):
-    #     pass
+    def compile(self, args):
+        if len(args) < 1:
+            raise InvalidArgument('Specify a file to compile')
 
-    # def all_together(self):
-    #     self.asm()
-    #     self.link()
-    #     self.run()
+        cmd = ['gcc', '-c', args[0]]
+        if len(args) >= 2:
+            cmd.extend(['-o', args[1]])
 
+        subprocess.run(cmd)
+
+    def link(self, args):
+        if len(args) < 1:
+            raise InvalidArgument('Please specify a file')
+
+        cmd = ['ld', args[0]]
+        if len(args) >= 2:
+            cmd.extend(['-o', args[1]])
+
+        subprocess.run(cmd)
+
+    def run(self, args):
+        if len(args) < 1:
+            raise InvalidArgument('Specify a program to run')
+
+        subprocess.run(args)
+
+    def gdb(self, args):
+        if len(args) < 1:
+            raise InvalidArgument('Specify a file to debug')
+
+        subprocess.run(['gdb', '-q', args[0]])
+
+    # try to do everything
+    def all_together(self):
+        pass
+
+
+# maybe some tutorials idk
+class Wiki(Mode):
+    pass
 
 
 if __name__ == '__main__':
-    try:
-        BaseMode()()
-    except KeyboardInterrupt:
-        print('bye')
+    BaseMode()()
