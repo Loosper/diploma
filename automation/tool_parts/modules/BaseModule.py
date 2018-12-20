@@ -9,4 +9,10 @@ class BaseModule:
 
     def __repr__(self):
         # should i show params?
-        return f'<Module {self.name}>'
+        return f'<Module {self.name} {self.params}>'
+
+    def build_code(self):
+        return self.code.format(**self.params)
+
+    def build_data(self):
+        return self.data.format(**self.params)

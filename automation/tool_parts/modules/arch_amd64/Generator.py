@@ -13,12 +13,10 @@ class Generator(BaseGenerator):
         '''
         data = ''
         code = 'begin:\n'
-        params = {}
 
         for module in self.modules:
-            data += module.data
-            code += module.code
-            params.update(module.params)
+            data += module.build_data()
+            code += module.build_code()
 
         final = header + data + code
-        return final.format(**params)
+        return final

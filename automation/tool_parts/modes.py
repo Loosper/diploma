@@ -1,5 +1,4 @@
-# TODO: restructure, so that everything is in a module and just 'main' is outside it
-from .lib import InvalidArgument, rget
+from .lib import *  # InvalidArgument, rget, mod_list
 from . import modules
 
 from elftools.elf import elffile
@@ -9,12 +8,17 @@ import sys
 import os
 import re
 
+
 # TODO: cli option to run a 'script'
 # TODO: identation in modules is fucked
 # TODO: args validation with a decorator
-# TODO: reasonable error messages
+# TODO: reasonable and consistent error messages - 'usage: cmd [param1] ..' or 'Please do x'
 # TODO: usage help - argparse?
+# TODO: help can take arguments - cmd to get help. Use docstring?
 # TODO: consistent method and command naming
+# TODO: global state
+# TODO: colours in shell
+# TODO: enocders for shellcode
 class Mode:
     # shared, because mutable. Do not assign
     # TODO: store shellcode/test objects so you can use them directly
@@ -26,12 +30,9 @@ class Mode:
             'exit': self.exit,
             'help': self.help,
         }
-        self.archs = [
-            arch[5:] for arch in dir(modules)
-            if arch.startswith('arch_')
-        ]
         self.cmds.update(cmds)
         self.tooltip = tooltip
+        self.archs = mod_list(modules, 'arch_')
 
     def __call__(self):
         for args in self.get_input():
@@ -94,7 +95,8 @@ class GenMode(Mode):
     def __init__(self, args):
         cmds = {
             'add': self.add_mod,
-            'show': self.show_mods,
+            'list': self.list_mods,
+            'preview': self.show_mods,
             'build': self.build,
         }
         super().__init__(cmds, tooltip='>> ')
@@ -114,21 +116,31 @@ class GenMode(Mode):
 
     def add_mod(self, args):
         if len(args) < 1:
-            raise InvalidArgument('add something')
+            raise InvalidArgument('Please specify a module')
 
+        # TODO: print arguments on error
+        # figure out a way to parse input and handle without invocation typerrors
         try:
-            mod = rget(self.arch, 'mod_' + args[0], 'Module')()
+            mod = rget(self.arch, 'mod_' + args[0], 'Module')(*args[1:])
             self.gen.append_module(mod)
         except AttributeError:
-            raise InvalidArgument('Missing')
+            raise InvalidArgument('No such module')
+        # WARNING: this may silence valid typererros from the constructor.
+        # ex: int('a')
+        except TypeError:
+            raise InvalidArgument('Unsupported arguments')
 
-    # TODO: this is bad. Add a lsit method
     def show_mods(self, args):
-        mods = ', '.join(map(repr, self.gen.modules))
-        print(f'Modules {mods} for arch {self.gen.arch}')
+        print(f'Modules for arch {self.gen.arch}')
+        for mod in map(repr, self.gen.modules):
+            print(mod)
 
     def inspect_mods(self, args):
         pass
+
+    def list_mods(self, args):
+        mods = ', '.join(mod_list(self.arch, 'mod_'))
+        print(f'Supported modules: {mods}')
 
     def build(self, args):
         print(self.gen.build())
@@ -144,24 +156,19 @@ class TestMode(Mode):
             'build': self.build,
         }
 
-        self.test = None
-
         super().__init__(cmds, tooltip='?> ')
 
+        self.test = None
+
     def show_tests(self, args):
-        # TODO: naming and redundancy
-        tests = [
-            # just the names
-            test[5:] for test in dir(modules)
-            if test.startswith('test_')
-        ]
+        tests = mod_list(modules, 'test_')
         # TODO: consider printing their repr
         print(f'Supported tests: {tests}')
 
     # TODO: choose at atartup?
     def use_test(self, args):
         if len(args) < 1:
-            raise InvalidArgument('What should I use?')
+            raise InvalidArgument('Please specify a test')
         try:
             self.test = rget(modules, 'test_' + args[0], 'Test')()
         except AttributeError:
@@ -185,6 +192,7 @@ class TestMode(Mode):
     def build(self, args):
         if self.test is None:
             raise InvalidArgument('No test selected')
+
         program = self.test.build()
         print(program)
 
@@ -194,14 +202,6 @@ class BuildMode(Mode):
     tmp_path = '/tmp/tool/'
 
     def __init__(self, args):
-        if len(args) < 1:
-            raise InvalidArgument('Specify an arch')
-        if args[0] not in self.archs:
-            raise InvalidArgument('Unsuppoted arch')
-
-        self.arch = args[0]
-        os.makedirs(self.tmp_path, exist_ok=True)
-        self.tester = None
         cmds = {
             'asm': self.asm,
             'disasm': self.disasm,
@@ -213,23 +213,20 @@ class BuildMode(Mode):
         }
         super().__init__(cmds, tooltip='>< ')
 
-    def asm(self, args):
         if len(args) < 1:
-            raise InvalidArgument('Usage: asm [input] [output]')
+            raise InvalidArgument('Specify an arch')
+        if args[0] not in self.archs:
+            raise InvalidArgument('Unsuppoted arch')
 
-        output = args[1] if len(args) >= 2 else self.tmp_path + 'output.o'
-        assembler = ['as', args[0], '-o', output]
-        subprocess.run(assembler)
-        print(f'saved to "{output}"')
+        self.arch = args[0]
+        os.makedirs(self.tmp_path, exist_ok=True)
+        self.tester = None
 
-
+    # TODO: I think objdump is better if it's just a file.
+    #  perhaps disassemble just 1 section/function?
     def disasm(self, args):
-        # TODO: validate arch exists
-        # TODO: accept path as disasm target
-        # TODO: guess arch
-        if len(args) < 2:
-            raise InvalidArgument('Usage: disasm [shellcode] [arch]')
-
+        if len(args) < 1:
+            raise InvalidArgument('Usage: disasm [shellcode]')
 
         tmp_file = self.tmp_path + 'elffile'
         obj_file = self.tmp_path + 'out'
@@ -239,7 +236,8 @@ class BuildMode(Mode):
             'x86': ['i386', 'elf32-i386']
         }
 
-        arch, fformat = objfile_map[args[1]]
+        fformat = objfile_map[self.arch]
+
         # parse from \x12 style encoding and store in bytearray to preserve endinanness
         parsed = bytearray(
             args[0]
@@ -255,12 +253,14 @@ class BuildMode(Mode):
             'objcopy',
             '-I', 'binary',
             '-O', fformat,
-            '-B', arch,
-            '--set-section-flags', '.data=code', '--rename-section', '.data=.text', '-w', '-N', '*',
+            '-B', self.arch,
+            '--set-section-flags', '.data=code', '--rename-section',
+            '.data=.text', '-w', '-N', '*',
             tmp_file, obj_file
         ])
 
         disasm = subprocess.run(['objdump', '-d', obj_file], capture_output=True)
+        # NOTE: this is not perfect
         ins = re.findall(r'\t[\S ]+\n', disasm.stdout.decode('ascii'))
         ins = [a.strip() for a in ins]
         print('\n'.join(ins))
@@ -280,6 +280,15 @@ class BuildMode(Mode):
             raise InvalidArgument('Invalid path')
         except ELFError:
             raise InvalidArgument('Input not elf file')
+
+    def asm(self, args):
+        if len(args) < 1:
+            raise InvalidArgument('Usage: asm [input] [output]')
+
+        output = args[1] if len(args) >= 2 else self.tmp_path + 'output.o'
+        assembler = ['as', args[0], '-o', output]
+        subprocess.run(assembler)
+        print(f'saved to "{output}"')
 
     def compile(self, args):
         if len(args) < 1:
