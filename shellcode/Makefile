@@ -1,10 +1,13 @@
 all: shellcode
 
-shellcode:
-	as -g -o shellcode.o shellcode.s
+shellcode: shell.s
+	as -g -o shellcode.o shell.s
 	# code is not in stack, so make .text writable
 	ld -N -z execstack shellcode.o
-	./a.out
+
+tcp: tcp_shell.s
+	as -g -o tcp.o tcp_shell.s
+	ld -N -z execstack tcp.o
 
 test:
 	gcc -g -z execstack -fno-stack-protector test_shellcode.c
