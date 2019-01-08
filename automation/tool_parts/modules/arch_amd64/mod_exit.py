@@ -7,7 +7,7 @@ class Module(BaseModule):
         code ='''
         exit:
             # sys_exit
-            xorl %eax, %eaxs
+            xorl %eax, %eax
             movb $60, %al
             xorl %edi, %edi
             syscall

@@ -15,10 +15,13 @@ import re
 # TODO: reasonable and consistent error messages - 'usage: cmd [param1] ..' or 'Please do x'
 # TODO: usage help - argparse?
 # TODO: help can take arguments - cmd to get help. Use docstring?
+# docstring to explain module?
 # TODO: consistent method and command naming
-# TODO: global state
 # TODO: colours in shell
 # TODO: enocders for shellcode
+# TODO: should global_state have 'formatter' objects?
+# TODO: save outputs like paths to file to a global
+# TODO: check subprocess commands for errors
 class Mode:
     # shared, because mutable. Do not assign
     # TODO: store shellcode/test objects so you can use them directly
@@ -29,17 +32,46 @@ class Mode:
         self.cmds = {
             'exit': self.exit,
             'help': self.help,
+            'globals': self.show_globals,
         }
         self.cmds.update(cmds)
         self.tooltip = tooltip
         self.archs = mod_list(modules, 'arch_')
+        self.tmp_path = '/tmp/tool/'
 
+        os.makedirs(self.tmp_path, exist_ok=True)
+
+    def _replace_globals(self, args):
+        for index, arg in enumerate(args):
+            if arg.startswith('!'):
+                value = self.global_state.get(arg[1:], None)
+                if value is not None:
+                    args[index] = value
+                else:
+                    raise InvalidArgument(f'No global {arg[1:]}')
+
+    def _saver(self, key):
+        def save(args):
+            data = self.global_state.get(key, None)
+            if len(args) < 1:
+                raise InvalidArgument('Please specify a path')
+            if data is None:
+                raise InvalidArgument(f'Please make a {key}')
+
+            with open(args[0], 'w') as file:
+                file.write(self.global_state[key])
+
+        return save
+
+    # TODO: add at index
     def __call__(self):
         for args in self.get_input():
             try:
-                # this can return things, to be saved in 'global_state'
-                # which could itself be modifiable with other commands
-                self.cmds[args[0]](args[1:])
+                # TODO: this explodes on nothing
+                cmd, *args = args
+
+                self._replace_globals(args)
+                self.cmds[cmd](args)
             except InvalidArgument as e:
                 print(e.msg)
             except KeyError:
@@ -76,6 +108,10 @@ class Mode:
         ])
         print(f'Supported commands: {keys}')
 
+    # TODO: pretty print
+    def show_globals(self, args):
+        print(self.global_state)
+
 
 class BaseMode(Mode):
     def __init__(self):
@@ -87,7 +123,6 @@ class BaseMode(Mode):
             'build': _(BuildMode),
             'test': _(TestMode),
         }
-
         super().__init__(cmds)
 
 
@@ -98,6 +133,7 @@ class GenMode(Mode):
             'list': self.list_mods,
             'preview': self.show_mods,
             'build': self.build,
+            'save': self._saver('shellcode'),
         }
         super().__init__(cmds, tooltip='>> ')
 
@@ -112,7 +148,6 @@ class GenMode(Mode):
             self.gen = rget(self.arch, 'Generator', 'Generator')()
         except AttributeError:
             raise InvalidArgument('Arch does not support generating')
-
 
     def add_mod(self, args):
         if len(args) < 1:
@@ -143,7 +178,10 @@ class GenMode(Mode):
         print(f'Supported modules: {mods}')
 
     def build(self, args):
-        print(self.gen.build())
+        shellcode = self.gen.build()
+        self.global_state['raw_shellcode'] = shellcode
+        # TODO: printing on/or saving in separate command?
+        print(shellcode)
 
 
 class TestMode(Mode):
@@ -154,8 +192,8 @@ class TestMode(Mode):
             'use': self.use_test,
             'set': self.set_param,
             'build': self.build,
+            'save': self._saver('test'),
         }
-
         super().__init__(cmds, tooltip='?> ')
 
         self.test = None
@@ -194,13 +232,19 @@ class TestMode(Mode):
             raise InvalidArgument('No test selected')
 
         program = self.test.build()
+        self.global_state['test'] = program
         print(program)
+
+    def save(self, args):
+        if len(args) < 1:
+            raise InvalidArgument('Please specify a path')
+
+        with open(args[0], 'w') as file:
+            file.write(self.global_state['test'])
 
 
 # TODO: these are mostly arch dependent.
 class BuildMode(Mode):
-    tmp_path = '/tmp/tool/'
-
     def __init__(self, args):
         cmds = {
             'asm': self.asm,
@@ -219,8 +263,12 @@ class BuildMode(Mode):
             raise InvalidArgument('Unsuppoted arch')
 
         self.arch = args[0]
-        os.makedirs(self.tmp_path, exist_ok=True)
         self.tester = None
+
+    @staticmethod
+    def _check_exit_status(proc):
+        if proc.returncode != 0:
+            raise InvalidArgument('Process failed.')
 
     # TODO: I think objdump is better if it's just a file.
     #  perhaps disassemble just 1 section/function?
@@ -238,13 +286,17 @@ class BuildMode(Mode):
 
         fformat = objfile_map[self.arch]
 
-        # parse from \x12 style encoding and store in bytearray to preserve endinanness
-        parsed = bytearray(
-            args[0]
-                .encode('ascii')
-                .decode('unicode_escape')
-                .encode('latin-1')
-        )
+        try:
+            # TODO: assert arch
+            parsed = args[0].__bytes__()
+        except Exception:
+            # parse from \x12 style encoding and store in bytearray to preserve endinanness
+            parsed = bytearray(
+                str(args[0])
+                    .encode('ascii')
+                    .decode('unicode_escape')
+                    .encode('latin-1')
+            )
 
         with open(tmp_file, 'bw') as file:
             file.write(parsed)
@@ -252,14 +304,15 @@ class BuildMode(Mode):
         subprocess.run([
             'objcopy',
             '-I', 'binary',
-            '-O', fformat,
-            '-B', self.arch,
+            '-B', fformat[0],
+            '-O', fformat[1],
             '--set-section-flags', '.data=code', '--rename-section',
             '.data=.text', '-w', '-N', '*',
             tmp_file, obj_file
         ])
 
         disasm = subprocess.run(['objdump', '-d', obj_file], capture_output=True)
+        self._check_exit_status(disasm)
         # NOTE: this is not perfect
         ins = re.findall(r'\t[\S ]+\n', disasm.stdout.decode('ascii'))
         ins = [a.strip() for a in ins]
@@ -273,9 +326,9 @@ class BuildMode(Mode):
             with open(args[0], 'br') as file:
                 reader = elffile.ELFFile(file)
                 shellcode = reader.get_section_by_name('.text').data()
-                print('"{}"'.format(
-                    ''.join('\\x{:02x}'.format(b) for b in shellcode)
-                ))
+                formatter = BytesFormat(shellcode, self.arch)
+                self.global_state['bin_shellcode'] = formatter
+                print('"{}"'.format(formatter))
         except (FileNotFoundError, IsADirectoryError):
             raise InvalidArgument('Invalid path')
         except ELFError:
@@ -285,11 +338,34 @@ class BuildMode(Mode):
         if len(args) < 1:
             raise InvalidArgument('Usage: asm [input] [output]')
 
+        if not os.path.exists(args[0]):
+            path = self.tmp_path + 'asm_input'
+            with open(path, 'w') as file:
+                file.write(args[0])
+            input = path
+        else:
+            input = args[0]
+
         output = args[1] if len(args) >= 2 else self.tmp_path + 'output.o'
-        assembler = ['as', args[0], '-o', output]
-        subprocess.run(assembler)
+        assembler = ['as', input, '-o', output]
+        self._check_exit_status(subprocess.run(assembler))
         print(f'saved to "{output}"')
 
+    # TODO: if its path-like it will blow up as a compiler not as an invalid path
+    # @staticmethod
+    # def _save_file(func):
+    #     def decorated(self, args):
+    #         path = self.tmp_path + 'compile_in'
+    #         if not os.path.exists(args[0]):
+    #             with open(path, 'w') as file:
+    #                 file.write(args[0])
+    #             args[0] = path
+
+    #         return func(self, args)
+
+    #     return decorated
+
+    # @_save_file
     def compile(self, args):
         if len(args) < 1:
             raise InvalidArgument('Specify a file to compile')
@@ -298,7 +374,7 @@ class BuildMode(Mode):
         if len(args) >= 2:
             cmd.extend(['-o', args[1]])
 
-        subprocess.run(cmd)
+        self._check_exit_status(subprocess.run(cmd))
 
     def link(self, args):
         if len(args) < 1:
@@ -308,7 +384,7 @@ class BuildMode(Mode):
         if len(args) >= 2:
             cmd.extend(['-o', args[1]])
 
-        subprocess.run(cmd)
+        self._check_exit_status(subprocess.run(cmd))
 
     def run(self, args):
         if len(args) < 1:
