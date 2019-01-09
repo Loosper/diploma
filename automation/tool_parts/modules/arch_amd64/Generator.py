@@ -5,12 +5,12 @@ class Generator(BaseGenerator):
         super().__init__(arch='amd64')
 
     def build(self):
-        header = '''
-        .global _start
-        .text
-        _start:
-            jmp begin
-        '''
+        header = (
+            '.global _start\n'
+            '.text\n'
+            '_start:\n'
+            '    jmp begin\n'
+        )
         data = ''
         code = 'begin:\n'
 

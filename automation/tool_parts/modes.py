@@ -30,7 +30,7 @@ def _assert_args(*arg_msgs, help_msg=''):
         @wraps(method)
         def decorated(self, args):
             n_args = len(args)
-            if n_args != len(arg_msgs):
+            if n_args < len(arg_msgs):
                 # print the message for the next missing arg
                 raise InvalidArgument(arg_msgs[n_args])
 
@@ -181,6 +181,7 @@ class GenMode(Mode):
             'preview': self.show_mods,
             'build': self.build,
             'save': self._saver('shellcode'),
+            'clear': self.clear,
         }
         super().__init__(cmds, tooltip='>> ')
 
@@ -234,6 +235,10 @@ class GenMode(Mode):
         self.global_state['raw_shellcode'] = shellcode
         # TODO: printing on/or saving in separate command?
         print(shellcode)
+
+    def clear(self, args):
+        """clear added modules"""
+        self.gen.clear_modules()
 
 
 class TestMode(Mode):
