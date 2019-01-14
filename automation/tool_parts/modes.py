@@ -12,8 +12,9 @@ import os
 import re
 
 
+# TODO: at least arrow keys should work
+# TODO: actual multiarch support
 # TODO: cli option to run a 'script'
-# TODO: identation in modules is fucked
 # TODO: reasonable and consistent error messages - 'usage: cmd [param1] ..' or 'Please do x'
 # TODO: usage help - convey optional arguments
 # docstring to explain module?
@@ -178,6 +179,7 @@ class GenMode(Mode):
         cmds = {
             'add': self.add_mod,
             'list': self.list_mods,
+            'inspect': self.inspect_mod,
             'preview': self.show_mods,
             'build': self.build,
             'save': self._saver('shellcode'),
@@ -197,6 +199,9 @@ class GenMode(Mode):
         except AttributeError:
             raise InvalidArgument('Arch does not support generating')
 
+    def _get_module(self, module):
+        return rget(self.arch, 'mod_' + module, 'Module')
+
     @_assert_args('Please specify a module')
     def add_mod(self, args):
         """
@@ -206,7 +211,7 @@ class GenMode(Mode):
         # TODO: print arguments on error
         # figure out a way to parse input and handle without invocation typerrors
         try:
-            mod = rget(self.arch, 'mod_' + args[0], 'Module')(*args[1:])
+            mod = self._get_module(args[0])(*args[1:])
             self.gen.append_module(mod)
         except AttributeError:
             raise InvalidArgument('No such module')
@@ -221,13 +226,18 @@ class GenMode(Mode):
         for mod in map(repr, self.gen.modules):
             print(mod)
 
-    def inspect_mods(self, args):
-        pass
-
     def list_mods(self, args):
         """list all supported modules"""
         mods = ', '.join(mod_list(self.arch, 'mod_'))
         print(f'Supported modules: {mods}')
+
+    @_assert_args('Specify a module')
+    def inspect_mod(self, args):
+        """inspect internals of a module"""
+        try:
+            print(self._get_module(args[0])().inspect(), end='')
+        except AttributeError:
+            raise InvalidArgument('Module does not exist')
 
     def build(self, args):
         """combine the modules and generate the shellcode"""
@@ -238,7 +248,8 @@ class GenMode(Mode):
 
     def clear(self, args):
         """clear added modules"""
-        self.gen.clear_modules()
+        self.gen.clear()
+        print('done')
 
 
 class TestMode(Mode):
@@ -251,6 +262,7 @@ class TestMode(Mode):
             'set': self.set_param,
             'build': self.build,
             'save': self._saver('test'),
+            'clear': self.clear,
         }
         super().__init__(cmds, tooltip='?> ')
 
@@ -296,6 +308,12 @@ class TestMode(Mode):
         program = self.test.build()
         self.global_state['test'] = program
         print(program)
+
+    # this might be redundant (use same one to replace)
+    def clear(self, args):
+        """clear parameters"""
+        self.test.clear()
+        print('done')
 
     # def save(self, args):
     #     if len(args) < 1:
@@ -380,8 +398,10 @@ class BuildMode(Mode):
             with open(args[0], 'br') as file:
                 reader = elffile.ELFFile(file)
                 shellcode = reader.get_section_by_name('.text').data()
+                # TODO: this is so broken
                 formatter = BytesFormat(shellcode, self.arch)
                 self.global_state['bin_shellcode'] = formatter
+                print('Extracted {} bytes'.format(len(formatter)))
                 print('"{}"'.format(formatter))
         except (FileNotFoundError, IsADirectoryError):
             raise InvalidArgument('Invalid path')
@@ -389,6 +409,7 @@ class BuildMode(Mode):
             raise InvalidArgument('Input not elf file')
 
     # this can also have an output
+    # TODO: blows up on a bad path
     @_assert_args('Please specify an input')
     def asm(self, args):
         """assemble a file
@@ -499,6 +520,10 @@ class DebugMode(Mode):
 
         print(self._twos_comp(int(num, 16), len(num)))
 
+    # in build mode?
+    # check for [null] bytes
+    def byte_check(self, args):
+        pass
 
 # maybe some tutorials idk
 class Wiki(Mode):

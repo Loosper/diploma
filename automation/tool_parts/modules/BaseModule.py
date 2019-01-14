@@ -16,3 +16,7 @@ class BaseModule:
 
     def build_data(self):
         return self.data.format(**self.params)
+
+    # in case one of them is a list, convert to string
+    def inspect(self):
+        return ''.join(self.data) + ''.join(self.code)

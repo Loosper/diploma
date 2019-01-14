@@ -13,6 +13,8 @@ class BytesFormat:
 
     def __bytes__(self):
         return self.data
+    def __len__(self):
+        return len(self.data)
 
     def __str__(self):
         return ''.join('\\x{:02x}'.format(b) for b in self.data)

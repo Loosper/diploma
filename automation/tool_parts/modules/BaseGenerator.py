@@ -6,7 +6,7 @@ class BaseGenerator:
     def append_module(self, module):
         self.modules.append(module)
 
-    def clear_modules(self):
+    def clear(self):
         self.modules = []
 
     def build(self):

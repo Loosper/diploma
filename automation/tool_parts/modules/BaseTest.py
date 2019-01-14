@@ -14,6 +14,9 @@ class BaseTest:
     def set_param(self, key, value):
         self.params[key] = value
 
+    def clear(self):
+        self.params = dict.fromkeys(self.params, None)
+
     def build(self):
         for key, value in self.params.items():
             if value is None:
