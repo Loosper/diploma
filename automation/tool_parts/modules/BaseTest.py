@@ -1,21 +1,29 @@
-from ..lib import InvalidArgument
+import re
 
-class BaseTest:
-    def __init__(self, code, archs, name, params={}):
+from ..lib import InvalidArgument, string_to_bytes
+from .ContainerLibrary import Container
+
+class BaseTest(Container):
+    def __init__(self, code, archs, name):
         self.archs = archs
-        self.params = params
         # WARNING: escape curly braces!!!
         self.code = code
         self.name = name
 
+        super().__init__()
+
     def __repr__(self):
         return f'<Test {self.name}>'
 
-    def set_param(self, key, value):
-        self.params[key] = value
-
-    def clear(self):
-        self.params = dict.fromkeys(self.params, None)
+    @staticmethod
+    def _validate_shellcode(shellcode):
+        try:
+            # match anything that is a '\xff' type of escape sequence
+            if re.fullmatch(r'(\\x[0-9abcdef]{2})+', shellcode):
+                return True
+        except TypeError:
+            pass
+        return False
 
     def build(self):
         for key, value in self.params.items():
@@ -23,3 +31,6 @@ class BaseTest:
                 raise InvalidArgument(f'{key} is missing')
 
         return self.code.format(**self.params)
+
+    def inspect(self):
+        return self.code

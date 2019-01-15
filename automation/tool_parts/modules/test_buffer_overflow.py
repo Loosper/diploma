@@ -2,8 +2,11 @@ from .BaseTest import BaseTest
 
 
 class Test(BaseTest):
+    @staticmethod
+    def param_template():
+        return {'shellcode': None}
+
     def __init__(self):
-        params = {'shellcode': None}
         # WARNING: escape curly braces!!!
         code = (
             'char shellcode[] = "{shellcode}";\n\n\n'
@@ -16,6 +19,6 @@ class Test(BaseTest):
         )
 
         super().__init__(
-            archs=['x86', 'amd64'], name='buffer overflow',
-            code=code, params=params
+            archs=['x86', 'amd64'],
+            name='buffer overflow', code=code
         )

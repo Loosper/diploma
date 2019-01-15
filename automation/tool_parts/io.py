@@ -53,7 +53,7 @@ def proceed_prompt(message):
 def input_field(default, tooltip='', validator=lambda x: True, errmsg='Value out of range'):
     while True:
         # default if empty string (newline)
-        val = input(tooltip + '[{}]: '.format(default)) or default
+        val = input(tooltip + ' [{}]: '.format(default)) or default
         if validator(val):
             return val
         else:

@@ -3,22 +3,17 @@ class InvalidArgument(Exception):
         self.msg = msg
 
 
-class BytesFormat:
-    def __init__(self, data, arch):
-        self.data = data
-        self.arch = arch
+def bytes_to_string(data):
+    return ''.join('\\x{:02x}'.format(b) for b in data)
 
-    def __repr__(self):
-        return '<Binary shellcode>'
 
-    def __bytes__(self):
-        return self.data
-    def __len__(self):
-        return len(self.data)
-
-    def __str__(self):
-        return ''.join('\\x{:02x}'.format(b) for b in self.data)
-
+# parse from \x12 style encoding and store in bytearray to preserve endinanness
+def string_to_bytes(data):
+    return bytearray(
+        data.encode('ascii')
+            .decode('unicode_escape')
+            .encode('latin-1')
+    )
 
 def rget(*args):
     *head, tail = args

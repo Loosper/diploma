@@ -3,25 +3,28 @@ from collections import OrderedDict
 from .io import select
 from .branch_handlers import *
 
+
 def dispatch_generate():
-    # arch = select_arch()
     generator = GenBranch()
-    generator.dispatch_cmd()
-    # generator.add_mod()
+    generator.dispatch_module()
+
+def dispatch_test():
+    tester = TestBranch()
+    tester.dispatch_test()
 
 
-def begin_encode():
+def dispatch_encode():
     print('now encoding')
 
 
 def main_dispatcher():
-    dispatcher = OrderedDict(
-        [('generate', dispatch_generate),
-        ('test', lambda: print('test')),
-        ('encode', begin_encode),
+    dispatcher = OrderedDict([
+        ('generate', dispatch_generate),
+        ('test', dispatch_test),
+        ('encode', dispatch_encode),
         ('debug', lambda: print('debug')),
-        ('disassemble', lambda: print('disassemble'))]
-    )
+        ('disassemble', lambda: print('disassemble'))
+    ])
 
     opt = select(list(dispatcher.keys()))
 
