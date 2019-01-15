@@ -2,8 +2,13 @@ from ..BaseModule import BaseModule
 
 
 class Module(BaseModule):
-    def __init__(self, code=0):
-        params = {'exit_code': code}
+    @staticmethod
+    def param_template():
+        return {'exit_code': 0}
+
+    def __init__(self):
+        self.validate_exit_code = self._validate_int
+
         code = (
             'exit:\n'
             '    # sys_exit\n'
@@ -13,7 +18,4 @@ class Module(BaseModule):
             '    syscall\n'
         )
 
-        super().__init__(
-            name='Sys_exit', arch='amd64',
-            code=code, params=params
-        )
+        super().__init__(name='Sys_exit', arch='amd64', code=code)

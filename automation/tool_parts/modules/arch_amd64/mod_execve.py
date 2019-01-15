@@ -2,9 +2,12 @@ from ..BaseModule import BaseModule
 
 
 class Module(BaseModule):
-    def __init__(self, target='/bin/sh'):
-        params = {'exec_target': target}
+    @staticmethod
+    def param_template():
+        return {'exec_target': '/bin/sh'}
 
+    def __init__(self):
+        self.validate_exec_target = self._validate_all
         data = (
             'sh:\n'
             '    .ascii "{exec_target}"\n'
@@ -25,5 +28,5 @@ class Module(BaseModule):
 
         super().__init__(
             name='Sys_execve', arch='amd64',
-            code=code, data=data, params=params
+            code=code, data=data
         )

@@ -1,5 +1,5 @@
-from tool_parts.modes import BaseMode
+from tool_parts.entry_points import main_dispatcher
 
 
 if __name__ == '__main__':
-    BaseMode()()
+    main_dispatcher()
