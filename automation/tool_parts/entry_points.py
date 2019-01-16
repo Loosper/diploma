@@ -17,13 +17,23 @@ def dispatch_encode():
     print('now encoding')
 
 
+def dispatch_disassemble():
+    disasm = DisassembleBranch()
+    disasm.do_disassemble()
+
+
+def dispatch_debug():
+    debugger = DebugBranch()
+    debugger.dispatch()
+
+
 def main_dispatcher():
     dispatcher = OrderedDict([
         ('generate', dispatch_generate),
         ('test', dispatch_test),
         ('encode', dispatch_encode),
-        ('debug', lambda: print('debug')),
-        ('disassemble', lambda: print('disassemble'))
+        ('debug', dispatch_debug),
+        ('disassemble', dispatch_disassemble)
     ])
 
     opt = select(list(dispatcher.keys()))

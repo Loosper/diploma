@@ -1,6 +1,6 @@
 import re
 
-from ..lib import InvalidArgument, string_to_bytes
+from ..lib import InvalidArgument, shellcode_validator
 from .ContainerLibrary import Container
 
 class BaseTest(Container):
@@ -17,13 +17,7 @@ class BaseTest(Container):
 
     @staticmethod
     def _validate_shellcode(shellcode):
-        try:
-            # match anything that is a '\xff' type of escape sequence
-            if re.fullmatch(r'(\\x[0-9abcdef]{2})+', shellcode):
-                return True
-        except TypeError:
-            pass
-        return False
+        return shellcode_validator
 
     def build(self):
         for key, value in self.params.items():

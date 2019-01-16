@@ -1,5 +1,7 @@
-import os.path
+import re
+import socket
 import logging
+import os.path
 import subprocess
 from collections import OrderedDict
 
@@ -200,3 +202,91 @@ class BuildBranch:
         cls._safe_exec(ld)
 
         return out_path
+
+    # TODO: I think objdump is better if it's just a file.
+    #  perhaps disassemble just 1 section/function?
+    @classmethod
+    def disassemble(cls, code, arch):
+        in_file = TMP_PATH + 'elffile'
+        obj_file = TMP_PATH + 'out'
+
+        objfile_map = {
+            'amd64': ['i386:x86-64', 'elf64-x86-64'],
+            'x86': ['i386', 'elf32-i386']
+        }
+
+        fformat = objfile_map[arch]
+
+        with open(in_file, 'bw') as file:
+            file.write(code)
+
+        cls._safe_exec([
+            'objcopy',
+            '-I', 'binary',
+            '-B', fformat[0],
+            '-O', fformat[1],
+            '--set-section-flags', '.data=code', '--rename-section',
+            '.data=.text', '-w', '-N', '*',
+            in_file, obj_file
+        ])
+
+        disasm = cls._safe_exec(['objdump', '-d', obj_file])
+        # NOTE: this is not perfect
+        ins = re.findall(r'\t[\S ]+\n', disasm.stdout.decode('ascii'))
+        ins = [a.strip() for a in ins]
+
+        return '\n'.join(ins)
+
+
+class DisassembleBranch:
+    def __init__(self):
+        self.arch = select_arch()
+
+    def do_disassemble(self):
+        shellcode = input_field(
+            None, tooltip='Bytecode',
+            validator=shellcode_validator
+        )
+
+        assembly = BuildBranch.disassemble(string_to_bytes(shellcode), self.arch)
+
+        print(assembly)
+
+
+class DebugBranch:
+    def dispatch(self):
+        dispatcher = OrderedDict([
+            ('Two\'s complement', self.twos_comp),
+            ('htons', self.htons),
+            # ('null byte check', self.byte_check),
+            ('quit', sys.exit),
+        ])
+
+        while True:
+            opt = select(list(dispatcher.keys()), tooltip='Utilities')
+            dispatcher[opt]()
+
+    def htons(self):
+        num = input_field(None, tooltip='short', validator=int_validator)
+        print(socket.htons(int(num)))
+
+    # courtesy of https://stackoverflow.com/questions/1604464/twos-complement-in-python
+    @staticmethod
+    def _twos_comp(val, bits):
+        if (val & (1 << (bits - 1))) != 0: # if sign bit is set e.g., 8bit: 128-255
+            val = val - (1 << bits)        # compute negative value
+        return val
+
+    def twos_comp(self):
+        num = input_field(None, tooltip='two\'s complement number', validator=hex_validator)
+        num_len = len(num)
+
+        if num.startswith('0x'):
+            num_len -= 2
+        num_len *= 4
+
+        print(self._twos_comp(int(num, 16), num_len))
+
+    # # check for [null] bytes
+    # def byte_check(self):
+    #     pass

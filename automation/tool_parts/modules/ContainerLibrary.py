@@ -1,3 +1,6 @@
+from ..lib import int_validator
+
+
 class Container:
     def __init__(self):
         self.params = self.param_template()
@@ -8,11 +11,7 @@ class Container:
 
     @staticmethod
     def _validate_int(num):
-        try:
-            int(num)
-        except ValueError:
-            return False
-        return True
+        return int_validator(num)
 
     @staticmethod
     def _validate_all(val):

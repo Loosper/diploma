@@ -1,3 +1,6 @@
+import re
+
+
 class InvalidArgument(Exception):
     def __init__(self, msg):
         self.msg = msg
@@ -26,3 +29,31 @@ def mod_list(module, prefix):
         entry[start:] for entry in dir(module)
         if entry.startswith(prefix)
     ]
+
+def validator(func):
+    def decorator(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except (TypeError, ValueError):
+            return False
+
+    return decorator
+
+@validator
+def shellcode_validator(shellcode):
+    # match anything that is a '\xff' type of escape sequence
+    if re.fullmatch(r'(\\x[0-9abcdefABCDEF]{2})+', shellcode):
+        return True
+    return False
+
+@validator
+def int_validator(num):
+    if re.fullmatch(r'[0-9]+', num):
+        return True
+    return False
+
+@validator
+def hex_validator(num):
+    if re.fullmatch(r'(0x)?[0-9abcdefABCDEF]+', num):
+        return True
+    return False
