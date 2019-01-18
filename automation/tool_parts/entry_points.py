@@ -4,6 +4,10 @@ from .io import select
 from .branch_handlers import *
 
 
+# def dispatcher(branch):
+#     branch().dispatch()
+
+
 def dispatch_generate():
     generator = GenBranch()
     generator.dispatch_module()
@@ -36,6 +40,9 @@ def main_dispatcher():
         ('disassemble', dispatch_disassemble)
     ])
 
-    opt = select(list(dispatcher.keys()))
-
-    dispatcher[opt]()
+    # TODO: should ^D mean different things in different contexts?
+    try:
+        opt = select(list(dispatcher.keys()))
+        dispatcher[opt]()
+    except (KeyboardInterrupt, EOFError):
+        print('\nGoodbye')

@@ -1,9 +1,9 @@
 import platform
 import sys
 
-import click
+# import click
 
-from tool_parts.lib import *
+from tool_parts.lib import mod_list
 from tool_parts import modules
 
 
@@ -21,20 +21,34 @@ def select(choices, tooltip='Actions', default=None):
     for index, mode in enumerate(choices):
         print('    {}. {}'.format(index + 1, mode))
 
-    opt = click.prompt(
-        'Select', default=default,
-        type=click.IntRange(1, len(choices))
-    )
+    while True:
+        opt = input('Select [{}]: '.format(default))
+        # user pressed enter
+        if opt == '':
+            opt = default
+        try:
+            opt = int(opt)
+            if 1 <= opt <= len(choices):
+                break
+            else:
+                print('Error: integer out of range')
+        except ValueError:
+            print('Error: invalid integer')
+
+    # opt = click.prompt(
+    #     'Select', default=default,
+    #     type=click.IntRange(1, len(choices))
+    # )
     chosen = choices[int(opt) - 1]
 
     return chosen
 
 
 def affirm_prompt(message):
-    choice = input('{}? [y/n]: '.format(message))
+    choice = input('{}? [Y/n]: '.format(message))
 
     # yes or just an enter
-    if choice == 'y' or choice == '':
+    if choice.lower() == 'y' or choice == '':
         return True
     else:
         return False
@@ -50,7 +64,10 @@ def proceed_prompt(message):
     return choice
 
 
-def input_field(default, tooltip='', validator=lambda x: True, errmsg='Value out of range'):
+def input_field(
+    default, tooltip='',
+    validator=lambda x: True, errmsg='Value out of range'
+):
     while True:
         # default if empty string (newline)
         val = input(tooltip + ' [{}]: '.format(default)) or default

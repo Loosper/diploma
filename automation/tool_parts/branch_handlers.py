@@ -12,16 +12,40 @@ from .lib import *
 from . import modules
 
 
+# TODO: actual multiarch support
+# TODO: cli option to run a 'script'
+# TODO: reasonable and consistent error messages
+# TODO: consistent method and command naming
+# TODO: colours in shell
+# TODO: enocders for shellcode
+
 TMP_PATH = '/tmp/shellcode/'
 os.makedirs(TMP_PATH, exist_ok=True)
 
 
+def dispatcher(opts, tooltip='Possible actions', once=False):
+    dispatcher = OrderedDict(opts)
+
+    while True:
+        opt = select(list(dispatcher.keys()), tooltip=tooltip)
+        dispatcher[opt]()
+
+        if once:
+            break
+
+
+def not_implemented():
+    print('This is not yet implemented')
+    sys.exit()
+
+
 # TODO: should arch be a settable global?
 class GenBranch:
-    def __init__(self):
-        self.arch = select_arch()
+    def __init__(self, arch=None):
+        self.arch = arch or select_arch()
         arch_mod = self._get_arch()
         self.mod_list = mod_list(arch_mod, 'mod_')
+        self.shellcode = bytes()
 
         try:
             self.gen = rget(arch_mod, 'Generator', 'Generator')()
@@ -40,7 +64,7 @@ class GenBranch:
         return self._get_module(name)()
 
     def dispatch_module(self):
-        dispatcher = OrderedDict([
+        dispatcher([
             ('append a module', self.add_mod),
             ('preview a module', self.preview_mod),
             ('build assembly', self.build),
@@ -48,12 +72,23 @@ class GenBranch:
             ('clear selections', self.reset_mods)
         ])
 
-        while True:
-            opt = select(list(dispatcher.keys()))
-            dispatcher[opt]()
-
     def dispatch_encode(self):
-        pass
+        dispatcher([
+            ('test shellcode', self.do_test),
+            ('encode shellcode', not_implemented),
+            ('debug tools', DebugBranch().dispatch),
+            ('build again', GenBranch(arch=self.arch).dispatch_module),
+            ('look at disassembly', self.show_disasm),
+            ('save and exit', not_implemented),
+            ('exit', sys.exit),
+        ], once=True)
+
+    def show_disasm(self):
+        asm = BuildBranch.disassemble(self.shellcode, self.arch)
+        print(asm)
+
+    def do_test(self):
+        TestBranch(arch=self.arch, shellcode=self.shellcode).dispatch_test()
 
     def add_mod(self):
         mod = self._select_module()
@@ -83,10 +118,12 @@ class GenBranch:
 
         BuildBranch.save(asm_path, shellcode)
         bin_path = BuildBranch.compile(asm_path, self.arch)
-        shellcode = BuildBranch.extract(bin_path, self.arch)
+        self.shellcode = BuildBranch.extract(bin_path, self.arch)
 
-        print('Extracted {} bytes'.format(len(shellcode)))
-        print(bytes_to_string(shellcode))
+        print('Extracted {} bytes'.format(len(self.shellcode)))
+        print(bytes_to_string(self.shellcode))
+
+        self.dispatch_encode()
 
     def show_mods(self):
         print('Modules so far: ')
@@ -101,43 +138,41 @@ class GenBranch:
 
 # REVIEW: could a _C_ test be invalid for a specific arch?
 class TestBranch:
-    def __init__(self):
-        self.arch = select_arch()
+    def __init__(self, arch=None, shellcode=None):
+        self.arch = arch or select_arch()
         self.test_list = mod_list(modules, 'test_')
+        self.shellcode = bytes_to_string(shellcode) if isinstance(shellcode, bytes) else shellcode
 
     def _select_test(self):
         test = select(self.test_list, tooltip='Tests')
         return rget(modules, 'test_' + test, 'Test')()
 
     def dispatch_test(self):
-        dispatcher = OrderedDict([
+        dispatcher([
             ('use a test', self.use_test),
             ('preview a test', self.preview_test),
         ])
 
-        while True:
-            opt = select(list(dispatcher.keys()))
-            dispatcher[opt]()
-
     def dispatch_exit(self):
-        dispatcher = OrderedDict([
+        dispatcher([
             ('exit', sys.exit),
             ('try a different test', self.use_test),
-        ])
-
-        opt = select(list(dispatcher.keys()))
-        dispatcher[opt]()
+        ], once=True)
 
     def use_test(self):
         test = self._select_test()
 
         for pkey, pval in test.param_template().items():
-            validator = test.get_validator(pkey)
-            value = input_field(
-                pval,
-                tooltip='Parameter \'{}\''.format(pkey.replace('_', ' ')),
-                validator=validator
-            )
+            if pkey == 'shellcode' and self.shellcode:
+                value = self.shellcode
+            else:
+                validator = test.get_validator(pkey)
+                value = input_field(
+                    pval,
+                    tooltip='Parameter \'{}\''.format(pkey.replace('_', ' ')),
+                    validator=validator
+                )
+
             test.set_param(pkey, value)
 
         code = test.build()
@@ -188,7 +223,7 @@ class BuildBranch:
 
         tmp_path = TMP_PATH + 'objfile.o'
         # seperate so it works with both assembly and c
-        gcc = ['gcc', '-fno-stack-protector', '-c', in_path, '-o', tmp_path]
+        gcc = ['gcc', '-fno-stack-protector', '-g', '-c', in_path, '-o', tmp_path]
         ld = [
             'ld', '--entry', 'main',
             '-N', '-z', 'execstack',
@@ -203,8 +238,7 @@ class BuildBranch:
 
         return out_path
 
-    # TODO: I think objdump is better if it's just a file.
-    #  perhaps disassemble just 1 section/function?
+    # REVIEW: perhaps disassemble just 1 section/function?
     @classmethod
     def disassemble(cls, code, arch):
         in_file = TMP_PATH + 'elffile'
@@ -255,16 +289,12 @@ class DisassembleBranch:
 
 class DebugBranch:
     def dispatch(self):
-        dispatcher = OrderedDict([
+        dispatcher([
             ('Two\'s complement', self.twos_comp),
             ('htons', self.htons),
             # ('null byte check', self.byte_check),
             ('quit', sys.exit),
-        ])
-
-        while True:
-            opt = select(list(dispatcher.keys()), tooltip='Utilities')
-            dispatcher[opt]()
+        ], tooltip='Utilities')
 
     def htons(self):
         num = input_field(None, tooltip='short', validator=int_validator)
