@@ -5,19 +5,13 @@ from .ContainerLibrary import Container
 
 class BaseTest(Container):
     def __init__(self, code, archs, name):
+        self.validate_shellcode = self._validate_shellcode
         self.archs = archs
         # WARNING: escape curly braces!!!
         self.code = code
         self.name = name
 
         super().__init__()
-
-    def __repr__(self):
-        return f'<Test {self.name}>'
-
-    @staticmethod
-    def _validate_shellcode(shellcode):
-        return shellcode_validator
 
     def build(self):
         for key, value in self.params.items():

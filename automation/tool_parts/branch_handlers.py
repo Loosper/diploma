@@ -18,7 +18,9 @@ from . import modules
 # TODO: consistent method and command naming
 # TODO: colours in shell
 # TODO: enocders for shellcode
+# TODO: don't make a new object every time a branch is changed
 
+# TODO: containers HAVE TO collect their own parameters
 TMP_PATH = '/tmp/shellcode/'
 os.makedirs(TMP_PATH, exist_ok=True)
 
@@ -39,35 +41,69 @@ def not_implemented():
     sys.exit()
 
 
-# TODO: should arch be a settable global?
-class GenBranch:
+# BAD NAME
+class Base:
     def __init__(self, arch=None):
         self.arch = arch or select_arch()
-        arch_mod = self._get_arch()
-        self.mod_list = mod_list(arch_mod, 'mod_')
+        self.arch_mod = self._get_arch_module()
+        self.shellcode = ''
+
+    def _select_item(self):
+        raise NotImplementedError
+
+    # get the module
+    def _get_arch_module(self):
+        return rget(modules, 'arch_' + self.arch)
+
+    def preview_item(self):
+        mod = self._select_item()
+
+        print(mod.inspect(), end='')
+
+    def _select_item_params(self):
+        item = self._select_item()
+
+        for pkey, pval in item.param_template().items():
+            # assumption: modules for GenBranch will not contain 'shellcode' param
+            # => not AttributeErrors
+            if pkey == 'shellcode' and self.shellcode:
+                value = self.shellcode
+            else:
+                validator = item.get_validator(pkey)
+                value = input_field(
+                    pval,
+                    tooltip='Parameter \'{}\''.format(pkey.replace('_', ' ')),
+                    validator=validator
+                )
+
+            item.set_param(pkey, value)
+
+        return item
+
+# TODO: should arch be a settable global?
+class GenBranch(Base):
+    def __init__(self, arch=None):
+        super().__init__(arch=arch)
+        self.mod_list = mod_list(self.arch_mod, 'mod_')
         self.shellcode = bytes()
 
         try:
-            self.gen = rget(arch_mod, 'Generator', 'Generator')()
+            self.gen = rget(self.arch_mod, 'Generator', 'Generator')()
         except AttributeError:
             raise InvalidArgument('Arch does not support generating')
 
-    # get the module
-    def _get_arch(self):
-        return rget(modules, 'arch_' + self.arch)
-
     def _get_module(self, module):
-        return rget(self._get_arch(), 'mod_' + module, 'Module')
+        return rget(self.arch_mod, 'mod_' + module, 'Module')
 
-    def _select_module(self):
+    def _select_item(self):
         name = select(self.mod_list, tooltip='Modules')
         return self._get_module(name)()
 
     def dispatch_module(self):
         dispatcher([
             ('append a module', self.add_mod),
-            ('preview a module', self.preview_mod),
-            ('build assembly', self.build),
+            ('preview a module', self.preview_item),
+            ('build assembly', self.build_text),
             ('show modules so far', self.show_mods),
             ('clear selections', self.reset_mods)
         ])
@@ -75,7 +111,12 @@ class GenBranch:
     def dispatch_encode(self):
         dispatcher([
             ('test shellcode', self.do_test),
-            ('encode shellcode', not_implemented),
+            (
+                'encode shellcode',
+                EncodeBranch(
+                    # TODO: pass as bytes
+                    arch=self.arch, shellcode=bytes_to_string(self.shellcode)
+                ).dispatch_encode),
             ('debug tools', DebugBranch().dispatch),
             ('build again', GenBranch(arch=self.arch).dispatch_module),
             ('look at disassembly', self.show_disasm),
@@ -91,26 +132,14 @@ class GenBranch:
         TestBranch(arch=self.arch, shellcode=self.shellcode).dispatch_test()
 
     def add_mod(self):
-        mod = self._select_module()
-
-        for pkey, pval in mod.param_template().items():
-            validator = mod.get_validator(pkey)
-            value = input_field(
-                pval,
-                tooltip='Parameter \'{}\''.format(pkey.replace('_', ' ')),
-                validator=validator
-            )
-            mod.set_param(pkey, value)
-
+        mod = self._select_item_params()
         self.gen.append_module(mod)
 
-    def preview_mod(self):
-        mod = self._select_module()
-
-        print(mod.inspect(), end='')
-
-    def build(self):
+    def build_text(self):
         shellcode = self.gen.build()
+        self.build_binary(shellcode)
+
+    def build_binary(self, shellcode):
         asm_path = TMP_PATH + 'shellcode.s'
 
         print(shellcode)
@@ -136,21 +165,43 @@ class GenBranch:
             print('done')
 
 
+class EncodeBranch(Base):
+    def __init__(self, arch=None, shellcode=bytes()):
+        super().__init__(arch=arch)
+        self.item_list = mod_list(self.arch_mod, 'enc_')
+        self.shellcode = shellcode
+
+    def _select_item(self):
+        enc_name = select(self.item_list, tooltip='Encoders')
+        return rget(self.arch_mod, 'enc_' + enc_name, 'Encoder')()
+
+    def dispatch_encode(self):
+        dispatcher([
+            ('use an encoder', self.use_encoder),
+            ('preview encoder', self.preview_item),
+        ])
+
+    def use_encoder(self):
+        enc = self._select_item_params()
+        shellcode = enc.build()
+        GenBranch(arch=self.arch).build_binary(shellcode)
+
+
 # REVIEW: could a _C_ test be invalid for a specific arch?
-class TestBranch:
-    def __init__(self, arch=None, shellcode=None):
-        self.arch = arch or select_arch()
+class TestBranch(Base):
+    def __init__(self, arch=None, shellcode=''):
+        super().__init__(arch=arch)
         self.test_list = mod_list(modules, 'test_')
         self.shellcode = bytes_to_string(shellcode) if isinstance(shellcode, bytes) else shellcode
 
-    def _select_test(self):
+    def _select_item(self):
         test = select(self.test_list, tooltip='Tests')
         return rget(modules, 'test_' + test, 'Test')()
 
     def dispatch_test(self):
         dispatcher([
             ('use a test', self.use_test),
-            ('preview a test', self.preview_test),
+            ('preview a test', self.preview_item),
         ])
 
     def dispatch_exit(self):
@@ -160,21 +211,7 @@ class TestBranch:
         ], once=True)
 
     def use_test(self):
-        test = self._select_test()
-
-        for pkey, pval in test.param_template().items():
-            if pkey == 'shellcode' and self.shellcode:
-                value = self.shellcode
-            else:
-                validator = test.get_validator(pkey)
-                value = input_field(
-                    pval,
-                    tooltip='Parameter \'{}\''.format(pkey.replace('_', ' ')),
-                    validator=validator
-                )
-
-            test.set_param(pkey, value)
-
+        test = self._select_item_params()
         code = test.build()
         code_path = TMP_PATH + 'test.c'
 
@@ -182,11 +219,6 @@ class TestBranch:
         BuildBranch.compile(code_path, self.arch)
 
         self.dispatch_exit()
-
-    def preview_test(self):
-        test = self._select_test()
-
-        print(test.inspect(), end='')
 
 
 # TODO: compile/decompile for multiple architectures
@@ -292,7 +324,7 @@ class DebugBranch:
         dispatcher([
             ('Two\'s complement', self.twos_comp),
             ('htons', self.htons),
-            # ('null byte check', self.byte_check),
+            ('null byte check', not_implemented),
             ('quit', sys.exit),
         ], tooltip='Utilities')
 

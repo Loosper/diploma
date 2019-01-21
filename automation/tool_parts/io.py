@@ -21,6 +21,10 @@ def select(choices, tooltip='Actions', default=None):
     for index, mode in enumerate(choices):
         print('    {}. {}'.format(index + 1, mode))
 
+    if len(choices) == 0:
+        print('Internal error: there are no more options')
+        sys.exit()
+
     while True:
         opt = input('Select [{}]: '.format(default))
         # user pressed enter

@@ -1,4 +1,4 @@
-from ..lib import int_validator
+from ..lib import int_validator, shellcode_validator
 
 
 class Container:
@@ -17,9 +17,13 @@ class Container:
     def _validate_all(val):
         return True
 
+    @staticmethod
+    def _validate_shellcode(shellcode):
+        return shellcode_validator(shellcode)
+
     # if no validator, everything works
     def get_validator(self, key):
-        return getattr(self, '_validate_' + key, self._validate_all)
+        return getattr(self, 'validate_' + key, self._validate_all)
 
     def set_param(self, key, value):
         result = self.get_validator(key)(value)
@@ -27,3 +31,6 @@ class Container:
             self.params[key] = value
 
         return result
+
+    def inspect(self):
+        raise NotImplementedError

@@ -1,6 +1,7 @@
 from collections import OrderedDict
 
 from .io import select
+from .lib import InvalidArgument
 from .branch_handlers import *
 
 
@@ -18,7 +19,8 @@ def dispatch_test():
 
 
 def dispatch_encode():
-    print('now encoding')
+    encoder = EncodeBranch()
+    encoder.dispatch_encode()
 
 
 def dispatch_disassemble():
@@ -46,3 +48,5 @@ def main_dispatcher():
         dispatcher[opt]()
     except (KeyboardInterrupt, EOFError):
         print('\nGoodbye')
+    except InvalidArgument as e:
+        print('Error: {}'.format(e))

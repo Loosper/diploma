@@ -14,7 +14,7 @@ class Module(BaseModule):
             'addr_eol:\n'
             '    .quad 0xffffffffffffffff\n'
             'sh:\n'
-            '    .ascii "/bin/ls"\n'
+            '    .ascii "{exec_target}"\n'
             'sh_eol:\n'
             '    .byte 0xff\n'
         )
