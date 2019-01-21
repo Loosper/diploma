@@ -17,7 +17,6 @@ from . import modules
 # TODO: reasonable and consistent error messages
 # TODO: consistent method and command naming
 # TODO: colours in shell
-# TODO: enocders for shellcode
 # TODO: don't make a new object every time a branch is changed
 
 # TODO: containers HAVE TO collect their own parameters
