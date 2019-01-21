@@ -9,6 +9,10 @@ tcp: tcp_shell.s
 	as -g -o tcp.o tcp_shell.s
 	ld -N -z execstack tcp.o
 
+xor: xor_shell.s
+	as -g -o xor.o xor_shell.s
+	ld -N -z execstack xor.o
+
 test:
 	gcc -g -z execstack -fno-stack-protector test_shellcode.c
 
