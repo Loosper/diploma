@@ -4,7 +4,6 @@ import sys
 # import click
 
 from tool_parts.lib import mod_list
-from tool_parts import modules
 
 
 # TODO: ^C, ^D
@@ -74,16 +73,11 @@ def input_field(
 ):
     while True:
         # default if empty string (newline)
-        val = input(tooltip + ' [{}]: '.format(default)) or default
+        val = input(tooltip + (' [{}]'.format(default) if default else '') + ': ') or default
+        if default is None and val == '':
+            print('You must input a value')
+            continue
         if validator(val):
             return val
         else:
             print(errmsg)
-
-
-def select_arch():
-    # TODO: unify prefixes
-    archs = mod_list(modules, 'arch_')
-    default = platform.machine()
-
-    return select(archs, tooltip='Supported architectures', default=default)

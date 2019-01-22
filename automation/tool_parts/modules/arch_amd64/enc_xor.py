@@ -1,13 +1,13 @@
 from .ArchEncoder import ArchEncoder
 
-from ...lib import string_to_bytes
+from ...lib import string_to_bytes, bytes_to_string
 
 class Encoder(ArchEncoder):
     @staticmethod
     def param_template():
         return {'xor_key': '15', 'shellcode': None}
 
-    def __init__(self):
+    def __init__(self, params={}):
         data = (
             'key:\n'
             '    .byte {xor_key}\n'
@@ -17,7 +17,7 @@ class Encoder(ArchEncoder):
         code = (
             'xor_encoder:\n'
             '    movb key(%rip), %bl\n'
-            '    xorw %ax, %ax\n'
+            '    xorl %eax, %eax\n'
             'loop:\n'
             '    leaq shellcode(%rip), %rcx\n'
             '    addq %rax, %rcx\n'
@@ -28,21 +28,18 @@ class Encoder(ArchEncoder):
             '    jmp shellcode\n'
         )
 
-        super().__init__(name='xor encoder', code=code, data=data)
+        super().__init__(name='xor encoder', code=code, data=data, params=params)
 
-    def build_data(self):
+    def prepare_build(self):
         key = int(self.params['xor_key'])
         xored = []
-        # TODO: do this in initialisation or have it passed in bytes
-        self.params['shellcode'] = string_to_bytes(self.params['shellcode'])
-        for byte in self.params['shellcode']:
+        shellcode = self.params['shellcode']
+
+        if isinstance(shellcode, str):
+            shellcode = string_to_bytes(shellcode)
+
+        for byte in shellcode:
             xored.append(byte ^ key)
 
-        xored = ', '.join('0x{:02x}'.format(b) for b in xored)
-
-        return self.data.format(xor_key=key, shellcode=xored)
-
-    def build_code(self):
-        # TEMPORARY: data is built before code
-        self.code = self.code.format(shellcode_length=len(self.params['shellcode']))
-        return super().build_code()
+        self.params['shellcode_length'] = len(xored)
+        self.params['shellcode'] = bytes_to_string(xored, sep=', ', prefix='0x')

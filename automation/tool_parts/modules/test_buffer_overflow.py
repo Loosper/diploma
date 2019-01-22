@@ -6,7 +6,7 @@ class Test(BaseTest):
     def param_template():
         return {'shellcode': None}
 
-    def __init__(self):
+    def __init__(self, params={}):
         # WARNING: escape curly braces!!!
         code = (
             'char shellcode[] = "{shellcode}";\n\n\n'
@@ -20,5 +20,5 @@ class Test(BaseTest):
 
         super().__init__(
             archs=['x86', 'amd64'],
-            name='buffer overflow', code=code
+            name='buffer overflow', code=code, params=params
         )

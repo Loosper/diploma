@@ -19,9 +19,18 @@ from . import modules
 # TODO: colours in shell
 # TODO: don't make a new object every time a branch is changed
 
-# TODO: containers HAVE TO collect their own parameters
+# TODO: adding another module of the same type results name duplicates
+
 TMP_PATH = '/tmp/shellcode/'
 os.makedirs(TMP_PATH, exist_ok=True)
+
+
+def select_arch():
+    # TODO: unify prefixes
+    archs = mod_list(modules, 'arch_')
+    default = platform.machine()
+
+    return select(archs, tooltip='Supported architectures', default=default)
 
 
 def dispatcher(opts, tooltip='Possible actions', once=False):
@@ -59,32 +68,12 @@ class Base:
 
         print(mod.inspect(), end='')
 
-    def _select_item_params(self):
-        item = self._select_item()
-
-        for pkey, pval in item.param_template().items():
-            # assumption: modules for GenBranch will not contain 'shellcode' param
-            # => not AttributeErrors
-            if pkey == 'shellcode' and self.shellcode:
-                value = self.shellcode
-            else:
-                validator = item.get_validator(pkey)
-                value = input_field(
-                    pval,
-                    tooltip='Parameter \'{}\''.format(pkey.replace('_', ' ')),
-                    validator=validator
-                )
-
-            item.set_param(pkey, value)
-
-        return item
-
 # TODO: should arch be a settable global?
 class GenBranch(Base):
     def __init__(self, arch=None):
         super().__init__(arch=arch)
         self.mod_list = mod_list(self.arch_mod, 'mod_')
-        self.shellcode = bytes()
+        self.shellcode = None
 
         try:
             self.gen = rget(self.arch_mod, 'Generator', 'Generator')()
@@ -112,10 +101,8 @@ class GenBranch(Base):
             ('test shellcode', self.do_test),
             (
                 'encode shellcode',
-                EncodeBranch(
-                    # TODO: pass as bytes
-                    arch=self.arch, shellcode=bytes_to_string(self.shellcode)
-                ).dispatch_encode),
+                EncodeBranch(arch=self.arch, shellcode=self.shellcode).dispatch_encode
+            ),
             ('debug tools', DebugBranch().dispatch),
             ('build again', GenBranch(arch=self.arch).dispatch_module),
             ('look at disassembly', self.show_disasm),
@@ -131,7 +118,7 @@ class GenBranch(Base):
         TestBranch(arch=self.arch, shellcode=self.shellcode).dispatch_test()
 
     def add_mod(self):
-        mod = self._select_item_params()
+        mod = self._select_item()
         self.gen.append_module(mod)
 
     def build_text(self):
@@ -165,14 +152,14 @@ class GenBranch(Base):
 
 
 class EncodeBranch(Base):
-    def __init__(self, arch=None, shellcode=bytes()):
+    def __init__(self, arch=None, shellcode=None):
         super().__init__(arch=arch)
         self.item_list = mod_list(self.arch_mod, 'enc_')
         self.shellcode = shellcode
 
     def _select_item(self):
         enc_name = select(self.item_list, tooltip='Encoders')
-        return rget(self.arch_mod, 'enc_' + enc_name, 'Encoder')()
+        return rget(self.arch_mod, 'enc_' + enc_name, 'Encoder')(params={'shellcode': self.shellcode})
 
     def dispatch_encode(self):
         dispatcher([
@@ -181,7 +168,7 @@ class EncodeBranch(Base):
         ])
 
     def use_encoder(self):
-        enc = self._select_item_params()
+        enc = self._select_item()
         shellcode = enc.build()
         GenBranch(arch=self.arch).build_binary(shellcode)
 
@@ -195,7 +182,7 @@ class TestBranch(Base):
 
     def _select_item(self):
         test = select(self.test_list, tooltip='Tests')
-        return rget(modules, 'test_' + test, 'Test')()
+        return rget(modules, 'test_' + test, 'Test')(params={'shellcode': self.shellcode})
 
     def dispatch_test(self):
         dispatcher([
@@ -210,7 +197,7 @@ class TestBranch(Base):
         ], once=True)
 
     def use_test(self):
-        test = self._select_item_params()
+        test = self._select_item()
         code = test.build()
         code_path = TMP_PATH + 'test.c'
 

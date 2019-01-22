@@ -9,7 +9,7 @@ shellcode:
 
 _start:
     movb key(%rip), %bl
-    xorw %ax, %ax
+    xorl %eax, %eax
 loop:
     leaq shellcode(%rip), %rcx
     addq %rax, %rcx

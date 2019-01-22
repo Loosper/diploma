@@ -6,8 +6,8 @@ class InvalidArgument(Exception):
         self.msg = msg
 
 
-def bytes_to_string(data):
-    return ''.join('\\x{:02x}'.format(b) for b in data)
+def bytes_to_string(data, sep='', prefix='\\x'):
+    return sep.join('{}{:02x}'.format(prefix, b) for b in data)
 
 
 # parse from \x12 style encoding and store in bytearray to preserve endinanness
@@ -41,6 +41,8 @@ def validator(func):
 
 @validator
 def shellcode_validator(shellcode):
+    if isinstance(shellcode, bytes):
+        return True
     # match anything that is a '\xff' type of escape sequence
     if re.fullmatch(r'(\\x[0-9abcdefABCDEF]{2})+', shellcode):
         return True
@@ -48,7 +50,7 @@ def shellcode_validator(shellcode):
 
 @validator
 def int_validator(num):
-    if re.fullmatch(r'[0-9]+', num):
+    if re.fullmatch(r'-?[0-9]+', num):
         return True
     return False
 
