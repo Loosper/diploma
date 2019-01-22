@@ -1,17 +1,19 @@
-from ..BaseModule import BaseModule
+from .ArchModule import Amd64Module
 
 
-class Module(BaseModule):
-    @staticmethod
-    def param_template():
-        return {
-            'nnops': 1
-        }
-
+class Module(Amd64Module):
     def __init__(self):
         self.validate_nnops = self._validate_int
-        code = ['nopsled:\n', '    nop\n']
-        super().__init__(name='nopsled', arch='amd64', code=code)
+        super().__init__(name='nopsled')
+
+    @staticmethod
+    def get_code():
+        return ['nopsled:\n', '    nop\n']
 
     def build_code(self):
-        return self.code[0] + self.code[1] * int(self.params['nnops'])
+        code = self.get_code()
+        return code[0] + code[1] * int(self.params['nnops'])
+
+    @staticmethod
+    def param_template():
+        return {'nnops': 1}

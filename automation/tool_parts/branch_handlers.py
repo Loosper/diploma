@@ -13,12 +13,12 @@ from . import modules
 
 
 # TODO: actual multiarch support
+# TODO: tests can be multiarch => make discoverable
 # TODO: cli option to run a 'script'
 # TODO: reasonable and consistent error messages
 # TODO: consistent method and command naming
 # TODO: colours in shell
 # TODO: don't make a new object every time a branch is changed
-
 # TODO: adding another module of the same type results name duplicates
 
 TMP_PATH = '/tmp/shellcode/'
@@ -85,7 +85,7 @@ class GenBranch(Base):
 
     def _select_item(self):
         name = select(self.mod_list, tooltip='Modules')
-        return self._get_module(name)()
+        return self._get_module(name)
 
     def dispatch_module(self):
         dispatcher([
@@ -118,7 +118,7 @@ class GenBranch(Base):
         TestBranch(arch=self.arch, shellcode=self.shellcode).dispatch_test()
 
     def add_mod(self):
-        mod = self._select_item()
+        mod = self._select_item()()
         self.gen.append_module(mod)
 
     def build_text(self):
@@ -159,7 +159,7 @@ class EncodeBranch(Base):
 
     def _select_item(self):
         enc_name = select(self.item_list, tooltip='Encoders')
-        return rget(self.arch_mod, 'enc_' + enc_name, 'Encoder')(params={'shellcode': self.shellcode})
+        return rget(self.arch_mod, 'enc_' + enc_name, 'Encoder')
 
     def dispatch_encode(self):
         dispatcher([
@@ -168,21 +168,21 @@ class EncodeBranch(Base):
         ])
 
     def use_encoder(self):
-        enc = self._select_item()
+        enc = self._select_item()(params={'shellcode': self.shellcode})
         shellcode = enc.build()
         GenBranch(arch=self.arch).build_binary(shellcode)
 
 
 # REVIEW: could a _C_ test be invalid for a specific arch?
 class TestBranch(Base):
-    def __init__(self, arch=None, shellcode=''):
+    def __init__(self, arch=None, shellcode=None):
         super().__init__(arch=arch)
         self.test_list = mod_list(modules, 'test_')
         self.shellcode = bytes_to_string(shellcode) if isinstance(shellcode, bytes) else shellcode
 
     def _select_item(self):
         test = select(self.test_list, tooltip='Tests')
-        return rget(modules, 'test_' + test, 'Test')(params={'shellcode': self.shellcode})
+        return rget(modules, 'test_' + test, 'Test')
 
     def dispatch_test(self):
         dispatcher([
@@ -197,7 +197,7 @@ class TestBranch(Base):
         ], once=True)
 
     def use_test(self):
-        test = self._select_item()
+        test = self._select_item()(params={'shellcode': self.shellcode})
         code = test.build()
         code_path = TMP_PATH + 'test.c'
 

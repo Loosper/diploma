@@ -1,15 +1,14 @@
-from ..BaseModule import BaseModule
+from .ArchModule import Amd64Module
 
 
-class Module(BaseModule):
-    @staticmethod
-    def param_template():
-        return {'exit_code': 0}
-
+class Module(Amd64Module):
     def __init__(self):
         self.validate_exit_code = self._validate_int
+        super().__init__(name='Sys_exit')
 
-        code = (
+    @staticmethod
+    def get_code():
+        return (
             'exit:\n'
             '    # sys_exit\n'
             '    xorl %eax, %eax\n'
@@ -18,4 +17,6 @@ class Module(BaseModule):
             '    syscall\n'
         )
 
-        super().__init__(name='Sys_exit', arch='amd64', code=code)
+    @staticmethod
+    def param_template():
+        return {'exit_code': 0}

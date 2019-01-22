@@ -50,6 +50,8 @@ def shellcode_validator(shellcode):
 
 @validator
 def int_validator(num):
+    if isinstance(num, int):
+        return True
     if re.fullmatch(r'-?[0-9]+', num):
         return True
     return False

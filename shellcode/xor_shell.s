@@ -16,7 +16,7 @@ loop:
     xorb %bl, (%rcx)
     inc %ax
     cmpw $69, %ax
-    jle loop
+    jl loop
 
     jmp shellcode
 

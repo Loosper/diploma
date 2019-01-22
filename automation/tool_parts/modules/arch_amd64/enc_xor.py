@@ -3,18 +3,25 @@ from .ArchEncoder import ArchEncoder
 from ...lib import string_to_bytes, bytes_to_string
 
 class Encoder(ArchEncoder):
+    def __init__(self, params={}):
+        super().__init__(name='xor encoder', params=params)
+
     @staticmethod
     def param_template():
         return {'xor_key': '15', 'shellcode': None}
 
-    def __init__(self, params={}):
-        data = (
+    @staticmethod
+    def get_data():
+        return (
             'key:\n'
             '    .byte {xor_key}\n'
             'shellcode:\n'
             '    .byte {shellcode}\n'
         )
-        code = (
+
+    @staticmethod
+    def get_code():
+        return (
             'xor_encoder:\n'
             '    movb key(%rip), %bl\n'
             '    xorl %eax, %eax\n'
@@ -24,11 +31,9 @@ class Encoder(ArchEncoder):
             '    xorb %bl, (%rcx)\n'
             '    inc %ax\n'
             '    cmpw ${shellcode_length}, %ax\n'
-            '    jle loop\n'
+            '    jl loop\n'
             '    jmp shellcode\n'
         )
-
-        super().__init__(name='xor encoder', code=code, data=data, params=params)
 
     def prepare_build(self):
         key = int(self.params['xor_key'])

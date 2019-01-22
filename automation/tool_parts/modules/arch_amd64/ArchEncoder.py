@@ -1,8 +1,8 @@
 from ..BaseEncoder import BaseEncoder
 
 class ArchEncoder(BaseEncoder):
-    def __init__(self, name, code, data, params={}):
-        super().__init__(name=name, arch='amd64', code=code, data=data, params=params)
+    def __init__(self, name, params={}):
+        super().__init__(name=name, arch='amd64', params=params)
 
     @staticmethod
     def shellcode_transform(shellcode):

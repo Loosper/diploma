@@ -4,12 +4,9 @@ from ..io import input_field
 
 class Container:
     # TODO: consider putting code/data in a seperate file
-    def __init__(self, name, code, archs=[], data='', params={}):
+    def __init__(self, name, archs=[], params={}):
         self.params = {}
         self.name = name
-        # WARNING: escape curly braces!!!
-        self.code = code
-        self.data = data
         # should be list
         self.archs = archs
         # TODO: assert arch is consistent with paltform naming
@@ -45,15 +42,25 @@ class Container:
     def _get_validator(self, key):
         return getattr(self, 'validate_' + key, self._validate_all)
 
-    # in case one of them is a list, convert to string
-    def inspect(self):
-        return ''.join(self.data) + ''.join(self.code)
+    @staticmethod
+    def get_data():
+        return ''
 
-    def build_code(self):
-        return self.code.format(**self.params)
+    # WARNING: escape curly braces!!!
+    @staticmethod
+    def get_code():
+        return ''
 
     def build_data(self):
-        return self.data.format(**self.params)
+        return self.get_data().format(**self.params)
+
+    def build_code(self):
+        return self.get_code().format(**self.params)
+
+    @classmethod
+    def inspect(cls):
+        # in case one of them is a list, convert to string
+        return ''.join(cls.get_data()) + ''.join(cls.get_code())
 
     @staticmethod
     def param_template():

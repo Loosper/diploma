@@ -73,10 +73,18 @@ def input_field(
 ):
     while True:
         # default if empty string (newline)
-        val = input(tooltip + (' [{}]'.format(default) if default else '') + ': ') or default
-        if default is None and val == '':
-            print('You must input a value')
-            continue
+        val = input(
+            tooltip +
+            (' [{}]'.format(default) if default is not None else '') + ': '
+        )
+        # if nothing selected, set defualt if available
+        if val == '':
+            if default is None:
+                print('You must input a value')
+                continue
+            else:
+                val = default
+
         if validator(val):
             return val
         else:

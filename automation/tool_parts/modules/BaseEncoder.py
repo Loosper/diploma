@@ -2,8 +2,8 @@ from .ContainerLibrary import Container
 
 
 class BaseEncoder(Container):
-    def __init__(self, name, arch, code, data='', params={}):
-        super().__init__(name=name, code=code, data=data, archs=[arch], params=params)
+    def __init__(self, name, arch, params={}):
+        super().__init__(name=name, archs=[arch], params=params)
 
     def build(self):
         raise NotImplementedError

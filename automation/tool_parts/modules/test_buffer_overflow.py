@@ -2,13 +2,15 @@ from .BaseTest import BaseTest
 
 
 class Test(BaseTest):
-    @staticmethod
-    def param_template():
-        return {'shellcode': None}
-
     def __init__(self, params={}):
-        # WARNING: escape curly braces!!!
-        code = (
+        super().__init__(
+            archs=['x86', 'amd64'],
+            name='buffer overflow', params=params
+        )
+
+    @staticmethod
+    def get_code():
+        return (
             'char shellcode[] = "{shellcode}";\n\n\n'
             'int main() {{\n'
             '    long *ret;\n\n'
@@ -18,7 +20,6 @@ class Test(BaseTest):
             '}}\n'
         )
 
-        super().__init__(
-            archs=['x86', 'amd64'],
-            name='buffer overflow', code=code, params=params
-        )
+    @staticmethod
+    def param_template():
+        return {'shellcode': None}
