@@ -65,4 +65,4 @@ class Container:
     @staticmethod
     def param_template():
         '''return a dict of all parameters the user should be prompted about'''
-        raise NotImplementedError
+        return {}

@@ -12,7 +12,7 @@ class Module(Amd64Module):
 
     def build_code(self):
         code = self.get_code()
-        return code[0] + code[1] * int(self.params['nnops'])
+        return code[0] + code[1] * int(self.params['nnops']) + '\n'
 
     @staticmethod
     def param_template():

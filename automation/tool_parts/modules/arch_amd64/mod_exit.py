@@ -9,12 +9,12 @@ class Module(Amd64Module):
     @staticmethod
     def get_code():
         return (
-            'exit:\n'
+            # 'exit:\n'
             '    # sys_exit\n'
             '    xorl %eax, %eax\n'
             '    movb $60, %al\n'
             '    xorl %edi, %edi\n'
-            '    syscall\n'
+            '    syscall\n\n'
         )
 
     @staticmethod

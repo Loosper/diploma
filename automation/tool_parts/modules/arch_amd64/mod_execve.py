@@ -23,7 +23,7 @@ class Module(Amd64Module):
     def get_code():
         # TODO: if /bin/sh, argv can be NULL, and skip initialisation code (saves space)
         return (
-            'execve:\n'
+            # 'execve:\n'
             '    xorq %rax, %rax\n'
             '    movb %al, sh_eol(%rip)\n'
             '    leaq sh(%rip), %rdi\n'
@@ -33,7 +33,7 @@ class Module(Amd64Module):
             '    xorl %edx, %edx\n'
             '    # sys_execve\n'
             '    movb $59, %al\n'
-            '    syscall\n'
+            '    syscall\n\n'
         )
 
     @staticmethod
