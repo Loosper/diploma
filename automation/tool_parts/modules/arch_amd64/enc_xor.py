@@ -4,6 +4,7 @@ from ...lib import string_to_bytes, bytes_to_string
 
 class Encoder(ArchEncoder):
     def __init__(self, params={}):
+        self.validate_xor_key = self._validate_int
         super().__init__(name='xor encoder', params=params)
 
     @staticmethod
@@ -32,7 +33,6 @@ class Encoder(ArchEncoder):
             '    inc %ax\n'
             '    cmpw ${shellcode_length}, %ax\n'
             '    jl loop\n'
-            '    jmp shellcode\n'
         )
 
     def prepare_build(self):

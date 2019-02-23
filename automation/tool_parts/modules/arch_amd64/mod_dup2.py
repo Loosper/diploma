@@ -6,20 +6,14 @@ class Module(Amd64Module):
         self.validate_fd = self._validate_int
         super().__init__(name='Sys_dup2')
 
-    # TODO: this is likely to be used many times
-    # '    movb $1, %sil\n'
-    # '    xorl %eax, %eax\n'
-    # '    movb $33, %al\n'
-    # '    syscall\n'
-    # this saves 2 zeroing instructions
     @staticmethod
     def get_code():
         return (
-            '    # dupd2(fd, 0)\n'
+            '    # newfd\n'
             '    xorl %esi, %esi\n'
-            '    xorb %sil, %sil\n'
             '    {}\n'
             '    # sys_dup2\n'
+            '    xorl %eax, %eax\n'
             '    movb $33, %al\n'
             '    syscall\n\n'
         )
@@ -27,7 +21,7 @@ class Module(Amd64Module):
     def build_code(self):
         fd = self.params['fd']
 
-        ins = 'xorl %eax, %eax' if fd == 0 else f'movl ${fd}, %eax'
+        ins = '' if fd == 0 else f'movb ${fd}, %sil'
         return self.get_code().format(ins)
 
     @staticmethod

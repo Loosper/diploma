@@ -36,8 +36,8 @@ class Module(Amd64Module):
         # TODO: fix zero bytes in ip and port
         return (
             '    # connect(fd, &sockaddr, 16)\n'
-            '    # move the socket to first argument\n'
-            '    movl %eax, %edi\n'
+            # '    # move the socket to first argument\n'
+            # '    movl %eax, %edi\n'
             '    # sys_connect\n'
             '    xorl %eax, %eax\n'
             '    movb $42, %al\n'
