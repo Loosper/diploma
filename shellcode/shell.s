@@ -4,9 +4,9 @@
 _start:
     jmp next
 addr:
-    .quad 0xffffffffffffffff
+    .space 8, 0xff
 addr_eol:
-    .quad 0xffffffffffffffff
+    .space 8, 0xff
 sh:
     .ascii "/bin/ls"
 sh_eol:

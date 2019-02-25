@@ -12,7 +12,7 @@ sockaddr:
     .byte 2
     .byte 0xff
     .word 4391
-    .long 0xffffffff
+    .space 4, 0xff
     .byte 127
     .byte 0
     .byte 0

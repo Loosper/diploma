@@ -5,6 +5,7 @@ void process(char *param) {
     char buf[25];
 
     strcpy(buf, param);
+    printf("%s", buf);
 }
 
 int main() {

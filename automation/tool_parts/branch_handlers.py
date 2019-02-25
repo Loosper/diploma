@@ -20,7 +20,11 @@ from . import modules
 # TODO: colours in shell
 # TODO: don't make a new object every time a branch is changed
 # TODO: adding another module of the same type results name duplicates
-
+# TODO: BaseModeule -> ShellcodeModule; COntainer -> BaseModule
+# TODO make into a wheel
+# TODO: default arch - x86 or native?
+# TODO: build nothing should error
+# TODO: choose what to do after build_binary. Enocde goes to GenBranch -> ????
 TMP_PATH = '/tmp/shellcode/'
 os.makedirs(TMP_PATH, exist_ok=True)
 
@@ -111,6 +115,7 @@ class GenBranch(Base):
         ], once=True)
 
     def show_disasm(self):
+        # might sound dumb, but this probably should be in the DisasmBranch
         asm = BuildBranch.disassemble(self.shellcode, self.arch)
         print(asm)
 
@@ -258,6 +263,8 @@ class BuildBranch:
         return out_path
 
     # REVIEW: perhaps disassemble just 1 section/function?
+    # TODO: map executable, syntax and file format. I hope there are no more changes
+    # TODO: dissasembly should show bytecode
     @classmethod
     def disassemble(cls, code, arch):
         in_file = TMP_PATH + 'elffile'
@@ -321,22 +328,17 @@ class DebugBranch:
         num = input_field(None, tooltip='short', validator=int_validator)
         print(socket.htons(int(num)))
 
-    # courtesy of https://stackoverflow.com/questions/1604464/twos-complement-in-python
     @staticmethod
-    def _twos_comp(val, bits):
-        if (val & (1 << (bits - 1))) != 0: # if sign bit is set e.g., 8bit: 128-255
-            val = val - (1 << bits)        # compute negative value
-        return val
+    def _twos_comp(val):
+        bits = val.bit_length()
+        # not the value and add 1 (two's comp)
+        comp = (val ^ (2 ** bits - 1)) + 1
+        return -comp
 
     def twos_comp(self):
         num = input_field(None, tooltip='two\'s complement number', validator=hex_validator)
-        num_len = len(num)
 
-        if num.startswith('0x'):
-            num_len -= 2
-        num_len *= 4
-
-        print(self._twos_comp(int(num, 16), num_len))
+        print(self._twos_comp(int(num, 16)))
 
     # # check for [null] bytes
     # def byte_check(self):

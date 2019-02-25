@@ -44,7 +44,7 @@ def shellcode_validator(shellcode):
     if isinstance(shellcode, bytes):
         return True
     # match anything that is a '\xff' type of escape sequence
-    if re.fullmatch(r'(\\x[0-9abcdefABCDEF]{2})+', shellcode):
+    if re.fullmatch(r'(\\x[\dabcdefABCDEF]{2})+', shellcode):
         return True
     return False
 
@@ -52,12 +52,12 @@ def shellcode_validator(shellcode):
 def int_validator(num):
     if isinstance(num, int):
         return True
-    if re.fullmatch(r'-?[0-9]+', num):
+    if re.fullmatch(r'-?[\d]+', num):
         return True
     return False
 
 @validator
 def hex_validator(num):
-    if re.fullmatch(r'(0x)?[0-9abcdefABCDEF]+', num):
+    if re.fullmatch(r'(0x)?[\dabcdefABCDEF]+', num):
         return True
     return False
