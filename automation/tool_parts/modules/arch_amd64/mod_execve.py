@@ -21,7 +21,6 @@ class Module(Amd64Module):
 
     @staticmethod
     def get_code():
-        # TODO: if /bin/sh, argv can be NULL, and skip initialisation code (saves space)
         return (
             # 'execve:\n'
             '    xorq %rax, %rax\n'

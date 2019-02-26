@@ -42,7 +42,6 @@ def main_dispatcher():
         ('disassemble', dispatch_disassemble)
     ])
 
-    # TODO: should ^D mean different things in different contexts?
     try:
         opt = select(list(dispatcher.keys()))
         dispatcher[opt]()

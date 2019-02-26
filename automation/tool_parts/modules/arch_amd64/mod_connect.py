@@ -7,7 +7,6 @@ class Module(Amd64Module):
     def __init__(self):
         super().__init__(name='Sys_connect')
 
-    # TODO: copy from tcp_shell.s
     @staticmethod
     def get_data():
         return (
@@ -33,7 +32,6 @@ class Module(Amd64Module):
 
     @staticmethod
     def get_code():
-        # TODO: fix zero bytes in ip and port
         return (
             '    # connect(fd, &sockaddr, 16)\n'
             # '    # move the socket to first argument\n'

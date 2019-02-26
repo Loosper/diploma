@@ -6,7 +6,6 @@ import sys
 from tool_parts.lib import mod_list
 
 
-# TODO: ^C, ^D
 def select(choices, tooltip='Actions', default=None):
     if default is None:
         default = 1

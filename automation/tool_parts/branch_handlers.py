@@ -12,25 +12,11 @@ from .lib import *
 from . import modules
 
 
-# TODO: actual multiarch support
-# TODO: tests can be multiarch => make discoverable
-# TODO: cli option to run a 'script'
-# TODO: reasonable and consistent error messages
-# TODO: consistent method and command naming
-# TODO: colours in shell
-# TODO: don't make a new object every time a branch is changed
-# TODO: adding another module of the same type results name duplicates
-# TODO: BaseModeule -> ShellcodeModule; COntainer -> BaseModule
-# TODO make into a wheel
-# TODO: default arch - x86 or native?
-# TODO: build nothing should error
-# TODO: choose what to do after build_binary. Enocde goes to GenBranch -> ????
 TMP_PATH = '/tmp/shellcode/'
 os.makedirs(TMP_PATH, exist_ok=True)
 
 
 def select_arch():
-    # TODO: unify prefixes
     archs = mod_list(modules, 'arch_')
     default = platform.machine()
 
@@ -72,7 +58,6 @@ class Base:
 
         print(mod.inspect(), end='')
 
-# TODO: should arch be a settable global?
 class GenBranch(Base):
     def __init__(self, arch=None):
         super().__init__(arch=arch)
@@ -213,7 +198,6 @@ class TestBranch(Base):
         self.dispatch_exit()
 
 
-# TODO: compile/decompile for multiple architectures
 class BuildBranch:
     # REVIEW: probably useless
     @staticmethod
@@ -263,8 +247,6 @@ class BuildBranch:
         return out_path
 
     # REVIEW: perhaps disassemble just 1 section/function?
-    # TODO: map executable, syntax and file format. I hope there are no more changes
-    # TODO: dissasembly should show bytecode
     @classmethod
     def disassemble(cls, code, arch):
         in_file = TMP_PATH + 'elffile'

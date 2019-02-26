@@ -3,13 +3,11 @@ from ..io import input_field
 
 
 class Container:
-    # TODO: consider putting code/data in a seperate file
     def __init__(self, name, archs=[], params={}):
         self.params = {}
         self.name = name
         # should be list
         self.archs = archs
-        # TODO: assert arch is consistent with paltform naming
         # validate_arch(arch)
 
         for pname, pval in self.param_template().items():
