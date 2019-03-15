@@ -1,0 +1,44 @@
+┌──────────┐                      preview          exit
+│ generate │           ┌─────────  module            ▲
+└──────────┘           │              ▲              │
+      │                │              │              │
+      ▼                ▼              │              │
+   select           select            │          ask for
+    arch ────────▶  module  ──────────┘           bytes
+                       │                             ▲
+                       │                             │
+                       ▼                             │
+                 preview text                     select
+      ┌────────▶   assembly                        arch
+      │                │                             ▲
+      │                │                             │
+      │                ▼                      ┌─────────────┐
+      │           export to    ┌─▶  exit      │ disassemble │
+      │             binary     │              └─────────────┘
+      │                │       │                     ▲
+      │                │       │                     │
+      │                ▼       │                     │
+   select           extract  ──┘                     │
+  encoder   ◀─────   bytes   ────────────────────────┘
+      ▲                      ──┐
+      │                │       │
+      │                │       │
+      │                ▼       │
+      │          ┌──────────┐  │
+  ask for        │  debug   │  │   select         select
+   bytes         │  tools   │  └─▶  test  ◀─────── arch
+      ▲          └──────────┘         │              ▲
+      │                │              │              │
+      │                ▼              ▼              │
+   select           select       export to     ┌──────────┐
+    arch       ┌─▶ utility         binary      │   test   │
+      ▲        │       │              │        └──────────┘
+      │        │       │              │
+      │        │       │              │
+┌──────────┐   │       ▼              ▼
+│  encode  │   │    output          exit
+└──────────┘   └──   text
+                       │
+                       │
+                       ▼
+                     exit
